@@ -5,25 +5,18 @@ import { AccentButton } from "@/components/ui/accent-button";
 import Battlegrounds from "@/components/battlegrounds";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Gamepad2, 
-  Trophy, 
+  Gamepad2,  
   Users, 
   Zap, 
   Target, 
-  Clock,
-  Star,
   ArrowRight,
-  Shield,
-  Sword,
   Crosshair,
-  Flame,
   Brain,
   BarChart3,
   Calendar
