@@ -13,11 +13,9 @@ export const createTeam = async (teamData: {
   owner_clerk_id: string
 }) => {
   try {
-    // First get the user's internal ID
     const user = await getUserByClerkId(teamData.owner_clerk_id)
     if (!user) throw new Error('User not found')
 
-    // Create the team
     const { data: team, error: teamError } = await supabase
       .from('teams')
       .insert([{
@@ -27,7 +25,7 @@ export const createTeam = async (teamData: {
         region: teamData.region,
         rank_requirement: teamData.rank_requirement,
         max_members: teamData.max_members,
-        current_members: 1, // Owner counts as first member
+        current_members: 1,
         practice_schedule: teamData.practice_schedule,
         logo_url: teamData.logo_url,
         game_specific_data: teamData.game_specific_data,
@@ -43,7 +41,6 @@ export const createTeam = async (teamData: {
       throw teamError
     }
 
-    // Add owner as team member
     const { error: membershipError } = await supabase
       .from('team_memberships')
       .insert([{
@@ -55,7 +52,6 @@ export const createTeam = async (teamData: {
 
     if (membershipError) {
       console.error('Error creating team membership:', membershipError)
-      // Try to clean up the team if membership creation fails
       await supabase.from('teams').delete().eq('id', team.id)
       throw membershipError
     }
@@ -75,11 +71,9 @@ export const createTeamInvitation = async (invitationData: {
   role?: string
 }) => {
   try {
-    // Get inviter's internal ID
     const inviter = await getUserByClerkId(invitationData.inviter_clerk_id)
     if (!inviter) throw new Error('Inviter not found')
 
-    // Create invitation
     const { data: invitation, error } = await supabase
       .from('team_invitations')
       .insert([{
@@ -90,7 +84,7 @@ export const createTeamInvitation = async (invitationData: {
         role: invitationData.role || 'member',
         status: 'pending',
         created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       }])
       .select()
       .single()

@@ -3,20 +3,18 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Create client with anon key for public operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false // Don't use Supabase auth since we're using Clerk
+    persistSession: false
   }
 })
 
-// Database types
 export interface User {
   id: string
   clerk_id: string
   email: string
   username: string
-  selected_game: string | string[]  // Handle both string and array formats
+  selected_game: string | string[]
   team_id?: string
   created_at: string
   updated_at: string
@@ -43,7 +41,7 @@ export interface Team {
   current_members: number
   rank_requirement?: string
   region: string
-  logo_url?: string  // Add logo_url to interface
+  logo_url?: string
   practice_schedule?: string
   game_specific_data?: Record<string, string>
   created_at: string
@@ -58,7 +56,6 @@ export interface TeamMembership {
   joined_at: string
 }
 
-// Team join request interface
 export interface TeamJoinRequest {
   id: string
   team_id: string
@@ -69,7 +66,6 @@ export interface TeamJoinRequest {
   updated_at: string
 }
 
-// Helper function to normalize games to array format
 function normalizeGamesToArray(games: string | string[] | null | undefined): string[] {
   if (!games) return []
   if (Array.isArray(games)) return games
@@ -77,7 +73,6 @@ function normalizeGamesToArray(games: string | string[] | null | undefined): str
   return []
 }
 
-// User operations
 export async function createUser(userData: {
   clerk_id: string
   email: string
@@ -88,7 +83,7 @@ export async function createUser(userData: {
       .from('users')
       .insert([{
         ...userData, 
-        selected_game: [] // Initialize as empty array
+        selected_game: []
       }])
       .select()
       .single()
@@ -117,7 +112,6 @@ export async function getUserByClerkId(clerkId: string) {
       throw error
     }
     
-    // Normalize the selected_game field to array format
     if (data) {
       data.selected_game = normalizeGamesToArray(data.selected_game)
     }
@@ -146,7 +140,6 @@ export async function updateUserGames(clerkId: string, games: string[]) {
       throw error
     }
     
-    // Normalize the response
     if (data) {
       data.selected_game = normalizeGamesToArray(data.selected_game)
     }
@@ -160,7 +153,6 @@ export async function updateUserGames(clerkId: string, games: string[]) {
 
 export async function addUserGame(clerkId: string, gameId: string) {
   try {
-    // First get current games
     const user = await getUserByClerkId(clerkId)
     if (!user) throw new Error('User not found')
     
@@ -190,7 +182,6 @@ export async function removeUserGame(clerkId: string, gameId: string) {
   }
 }
 
-// Game profile operations
 export async function createUserGameProfile(profileData: {
   user_id: string
   game_id: string
@@ -218,7 +209,6 @@ export async function getUserGameProfiles(userId: string) {
   return data
 }
 
-// Team operations
 export async function getTeamsForGame(game: string) {
   const { data, error } = await supabase
     .from('teams')
@@ -232,7 +222,6 @@ export async function getTeamsForGame(game: string) {
 
 export async function getUserTeamsForGame(clerkId: string, game: string) {
   try {
-    // First get the user's internal ID from their Clerk ID
     const user = await getUserByClerkId(clerkId)
     if (!user) {
       console.log('User not found for clerk ID:', clerkId)
@@ -245,7 +234,7 @@ export async function getUserTeamsForGame(clerkId: string, game: string) {
         *,
         teams!inner(*)
       `)
-      .eq('user_id', user.id) // Use the internal UUID, not the Clerk ID
+      .eq('user_id', user.id)
       .eq('teams.game', game)
     
     if (error) {
@@ -263,7 +252,6 @@ export async function getUserTeamsForAllGames(clerkId: string, games: string[]) 
   try {
     if (!games || games.length === 0) return []
     
-    // First get the user's internal ID from their Clerk ID
     const user = await getUserByClerkId(clerkId)
     if (!user) {
       console.log('User not found for clerk ID:', clerkId)
@@ -276,7 +264,7 @@ export async function getUserTeamsForAllGames(clerkId: string, games: string[]) 
         *,
         teams!inner(*)
       `)
-      .eq('user_id', user.id) // Use the internal UUID, not the Clerk ID
+      .eq('user_id', user.id)
       .in('teams.game', games)
     
     if (error) {
@@ -290,10 +278,8 @@ export async function getUserTeamsForAllGames(clerkId: string, games: string[]) 
   }
 }
 
-// Helper function to check if user has teams
 export async function getUserTeamCount(clerkId: string) {
   try {
-    // First get the user's internal ID
     const { data: user } = await supabase
       .from('users')
       .select('id')
@@ -302,7 +288,6 @@ export async function getUserTeamCount(clerkId: string) {
     
     if (!user) return 0
     
-    // Count their team memberships
     const { count, error } = await supabase
       .from('team_memberships')
       .select('*', { count: 'exact', head: true })
@@ -315,7 +300,6 @@ export async function getUserTeamCount(clerkId: string) {
   }
 }
 
-// Image upload functionality
 export async function uploadTeamLogo(file: File, teamId: string): Promise<string> {
   try {
     const fileExt = file.name.split('.').pop()
@@ -334,7 +318,6 @@ export async function uploadTeamLogo(file: File, teamId: string): Promise<string
       throw error
     }
 
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('team-assets')
       .getPublicUrl(data.path)
@@ -348,7 +331,6 @@ export async function uploadTeamLogo(file: File, teamId: string): Promise<string
 
 export async function deleteTeamLogo(logoUrl: string): Promise<void> {
   try {
-    // Extract file path from URL
     const urlParts = logoUrl.split('/team-assets/')
     if (urlParts.length < 2) return
 
@@ -364,11 +346,9 @@ export async function deleteTeamLogo(logoUrl: string): Promise<void> {
     }
   } catch (error) {
     console.error('Error deleting team logo:', error)
-    // Don't throw here as this is cleanup
   }
 }
 
-// Team creation and management
 export async function createTeam(teamData: {
   name: string
   description: string
@@ -378,15 +358,13 @@ export async function createTeam(teamData: {
   max_members: number
   practice_schedule?: string
   game_specific_data?: Record<string, string>
-  logo_url?: string  // Add logo_url to the interface
+  logo_url?: string
   owner_clerk_id: string
 }) {
   try {
-    // First get the user's internal ID
     const user = await getUserByClerkId(teamData.owner_clerk_id)
     if (!user) throw new Error('User not found')
 
-    // Create the team
     const { data: team, error: teamError } = await supabase
       .from('teams')
       .insert([{
@@ -396,10 +374,10 @@ export async function createTeam(teamData: {
         region: teamData.region,
         rank_requirement: teamData.rank_requirement,
         max_members: teamData.max_members,
-        current_members: 1, // Owner counts as first member
+        current_members: 1,
         practice_schedule: teamData.practice_schedule,
         game_specific_data: teamData.game_specific_data,
-        logo_url: teamData.logo_url,  // Add logo_url to insert
+        logo_url: teamData.logo_url,
         owner_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -412,7 +390,6 @@ export async function createTeam(teamData: {
       throw teamError
     }
 
-    // Add owner as team member
     const { error: membershipError } = await supabase
       .from('team_memberships')
       .insert([{
@@ -424,7 +401,6 @@ export async function createTeam(teamData: {
 
     if (membershipError) {
       console.error('Error creating team membership:', membershipError)
-      // Try to clean up the team if membership creation fails
       await supabase.from('teams').delete().eq('id', team.id)
       throw membershipError
     }
@@ -436,7 +412,6 @@ export async function createTeam(teamData: {
   }
 }
 
-// Update team logo
 export async function updateTeamLogo(teamId: string, logoUrl: string): Promise<void> {
   try {
     const { error } = await supabase
@@ -457,7 +432,6 @@ export async function updateTeamLogo(teamId: string, logoUrl: string): Promise<v
   }
 }
 
-// Team invitations
 export async function createTeamInvitation(invitationData: {
   team_id: string
   inviter_clerk_id: string
@@ -466,11 +440,9 @@ export async function createTeamInvitation(invitationData: {
   role?: string
 }) {
   try {
-    // Get inviter's internal ID
     const inviter = await getUserByClerkId(invitationData.inviter_clerk_id)
     if (!inviter) throw new Error('Inviter not found')
 
-    // Check if invitation already exists
     const { data: existingInvite } = await supabase
       .from('team_invitations')
       .select('id')
@@ -483,7 +455,6 @@ export async function createTeamInvitation(invitationData: {
       throw new Error('Invitation already exists for this email')
     }
 
-    // Create invitation
     const { data: invitation, error } = await supabase
       .from('team_invitations')
       .insert([{
@@ -494,7 +465,7 @@ export async function createTeamInvitation(invitationData: {
         role: invitationData.role || 'member',
         status: 'pending',
         created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       }])
       .select()
       .single()
@@ -511,7 +482,6 @@ export async function createTeamInvitation(invitationData: {
   }
 }
 
-// Get user's teams (as owner)
 export async function getUserOwnedTeams(clerkId: string) {
   try {
     const user = await getUserByClerkId(clerkId)
@@ -535,13 +505,11 @@ export async function getUserOwnedTeams(clerkId: string) {
   }
 }
 
-// Check if user can create team for game (optional: limit teams per game)
 export async function canUserCreateTeamForGame(clerkId: string, game: string) {
   try {
     const user = await getUserByClerkId(clerkId)
     if (!user) return false
 
-    // Check existing teams for this game (limit to 3 teams per game)
     const { count, error } = await supabase
       .from('teams')
       .select('*', { count: 'exact', head: true })
@@ -550,17 +518,16 @@ export async function canUserCreateTeamForGame(clerkId: string, game: string) {
 
     if (error) {
       console.error('Error checking team count:', error)
-      return true // Allow creation if check fails
+      return true
     }
 
-    return (count || 0) < 3 // Max 3 teams per game
+    return (count || 0) < 3
   } catch (error) {
     console.error('Error in canUserCreateTeamForGame:', error)
     return true
   }
 }
 
-// Team search and join request functions
 export async function searchTeamsForGame(game: string, filters?: {
   search?: string
   region?: string
@@ -574,9 +541,6 @@ export async function searchTeamsForGame(game: string, filters?: {
         team_memberships(count)
       `)
       .eq('game', game)
-
-    // Only teams with available spots - using a simple comparison instead of supabase.raw
-    // We'll filter this in JavaScript instead since supabase.raw isn't available
     
     if (filters?.search) {
       query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
@@ -597,7 +561,6 @@ export async function searchTeamsForGame(game: string, filters?: {
       throw error
     }
 
-    // Filter teams with available spots in JavaScript
     const availableTeams = (data || []).filter(team => team.current_members < team.max_members)
 
     return availableTeams
@@ -607,7 +570,6 @@ export async function searchTeamsForGame(game: string, filters?: {
   }
 }
 
-// Check if user is already a member of a team
 export async function isUserTeamMember(clerkId: string, teamId: string): Promise<boolean> {
   try {
     const user = await getUserByClerkId(clerkId)
@@ -632,7 +594,6 @@ export async function isUserTeamMember(clerkId: string, teamId: string): Promise
   }
 }
 
-// Check if user has pending join request for team
 export async function hasUserPendingRequest(clerkId: string, teamId: string): Promise<boolean> {
   try {
     const user = await getUserByClerkId(clerkId)
@@ -658,13 +619,11 @@ export async function hasUserPendingRequest(clerkId: string, teamId: string): Pr
   }
 }
 
-// Request to join team
 export async function requestToJoinTeam(teamId: string, clerkId: string, message?: string) {
   try {
     const user = await getUserByClerkId(clerkId)
     if (!user) throw new Error('User not found')
 
-    // Check if team exists and has space
     const { data: team, error: teamError } = await supabase
       .from('teams')
       .select('id, current_members, max_members, name')
@@ -680,19 +639,16 @@ export async function requestToJoinTeam(teamId: string, clerkId: string, message
       throw new Error('Team is full')
     }
 
-    // Check if user is already a member
     const isMember = await isUserTeamMember(clerkId, teamId)
     if (isMember) {
       throw new Error('You are already a member of this team')
     }
 
-    // Check if user already has a pending request
     const hasPendingRequest = await hasUserPendingRequest(clerkId, teamId)
     if (hasPendingRequest) {
       throw new Error('You already have a pending request for this team')
     }
 
-    // Create join request
     const { data: request, error } = await supabase
       .from('team_join_requests')
       .insert([{
@@ -718,13 +674,11 @@ export async function requestToJoinTeam(teamId: string, clerkId: string, message
   }
 }
 
-// Get pending join requests for team owner
 export async function getTeamJoinRequests(teamId: string, clerkId: string) {
   try {
     const user = await getUserByClerkId(clerkId)
     if (!user) throw new Error('User not found')
 
-    // Check if user is team owner
     const { data: team, error: teamError } = await supabase
       .from('teams')
       .select('owner_id')
@@ -757,13 +711,11 @@ export async function getTeamJoinRequests(teamId: string, clerkId: string) {
   }
 }
 
-// Accept or decline join request
 export async function respondToJoinRequest(requestId: string, clerkId: string, action: 'accept' | 'decline') {
   try {
     const user = await getUserByClerkId(clerkId)
     if (!user) throw new Error('User not found')
 
-    // Get the join request with team info
     const { data: request, error: requestError } = await supabase
       .from('team_join_requests')
       .select(`
@@ -779,18 +731,15 @@ export async function respondToJoinRequest(requestId: string, clerkId: string, a
       throw new Error('Join request not found')
     }
 
-    // Check if user is team owner
     if (request.teams.owner_id !== user.id) {
       throw new Error('You are not authorized to respond to this request')
     }
 
     if (action === 'accept') {
-      // Check if team still has space
       if (request.teams.current_members >= request.teams.max_members) {
         throw new Error('Team is now full')
       }
 
-      // Start transaction: Add member and update request
       const { error: membershipError } = await supabase
         .from('team_memberships')
         .insert([{
@@ -805,7 +754,6 @@ export async function respondToJoinRequest(requestId: string, clerkId: string, a
         throw new Error('Failed to add member to team')
       }
 
-      // Update team member count
       const { error: teamUpdateError } = await supabase
         .from('teams')
         .update({ 
@@ -816,11 +764,9 @@ export async function respondToJoinRequest(requestId: string, clerkId: string, a
 
       if (teamUpdateError) {
         console.error('Error updating team member count:', teamUpdateError)
-        // Note: In a real app, you'd want to rollback the membership insertion here
       }
     }
 
-    // Update request status
     const { error: statusError } = await supabase
       .from('team_join_requests')
       .update({ 

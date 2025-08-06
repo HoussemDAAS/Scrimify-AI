@@ -155,7 +155,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Gaming Grid Background */}
       <div className="absolute inset-0 opacity-10">
         <div className="grid grid-cols-8 md:grid-cols-12 gap-2 md:gap-4 h-full">
           {Array.from({ length: 96 }).map((_, i) => (
@@ -164,13 +163,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Enhanced Red Glowing Effects */}
       <div className="absolute inset-0">
         <div className="absolute top-20 left-20 w-40 h-40 bg-red-600/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-60 right-32 w-48 h-48 bg-red-500/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute bottom-32 left-1/3 w-44 h-44 bg-red-700/20 rounded-full blur-3xl animate-pulse delay-500"></div>
         
-        {/* Floating elements */}
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
@@ -185,7 +182,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Header Navigation */}
       <div className="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 z-20 flex justify-between items-center">
         <Link 
           href="/game-selection"
@@ -197,14 +193,11 @@ export default function DashboardPage() {
           <span className="hidden lg:block font-bold text-sm md:text-base">MANAGE GAMES</span>
         </Link>
 
-        {/* User Profile & Actions */}
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Notification Dropdown */}
           {user && (
             <NotificationDropdown clerkId={user.id} />
           )}
 
-          {/* User Profile */}
           <div className="flex items-center gap-2 md:gap-3 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg px-2 py-1 md:px-4 md:py-2">
             <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center">
               <Users className="w-3 h-3 md:w-4 md:h-4 text-white" />
@@ -215,7 +208,6 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          {/* Logout Button */}
           <AccentButton
             onClick={() => signOut()}
             size="sm"
@@ -228,7 +220,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
-        {/* Header */}
         <div className="text-center mb-12 md:mb-16">
           <div className="flex justify-center mb-6 md:mb-8">
             <div className="relative">
@@ -253,7 +244,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Game Management Section */}
         <div className="mb-8 md:mb-12 max-w-4xl mx-auto">
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <SecondaryButton 
@@ -273,7 +263,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Game Switcher */}
         <div className="mb-8 md:mb-12">
           <h2 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 text-center flex items-center justify-center gap-2">
             <Gamepad2 className="w-5 h-5 md:w-6 md:h-6 text-red-500" />
@@ -308,7 +297,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Current Game Display */}
         {currentGame && (
           <div className="mb-8 md:mb-12">
             <div className="flex justify-center mb-6">
@@ -343,9 +331,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Team Management Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto mb-8">
-          {/* Join Team Card */}
           <div className="group relative">
             <div className="absolute -inset-4 md:-inset-6 bg-gradient-to-r from-red-600/15 to-red-800/15 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
             
@@ -380,7 +366,6 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Create Team Card */}
           <div className="group relative">
             <div className="absolute -inset-4 md:-inset-6 bg-gradient-to-r from-red-600/15 to-red-800/15 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
             
@@ -416,7 +401,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Current Teams Display */}
         {userTeams.length > 0 && (
           <div className="max-w-5xl mx-auto">
             <h3 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 text-center flex items-center justify-center gap-2">
@@ -430,7 +414,6 @@ export default function DashboardPage() {
                   team={membership.teams}
                   membership={membership}
                   onClick={() => {
-                    // TODO: Navigate to team details page
                     console.log('Navigate to team:', membership.teams.name)
                   }}
                 />
@@ -439,7 +422,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* No Teams Message */}
         {userTeams.length === 0 && currentGame && (
           <div className="max-w-2xl mx-auto text-center">
             <div className="bg-gradient-to-br from-gray-900/60 to-black/60 backdrop-blur-lg border border-red-500/20 rounded-2xl p-6 md:p-8">
@@ -471,7 +453,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Stats Footer */}
         <div className="mt-12 md:mt-16 text-center">
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 text-sm">
             <div className="flex items-center gap-2 text-gray-400">
