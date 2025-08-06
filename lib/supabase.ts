@@ -300,3 +300,172 @@ export async function getUserTeamCount(clerkId: string) {
     return 0
   }
 }
+
+// Team creation and management
+export async function createTeam(teamData: {
+  name: string
+  description: string
+  game: string
+  region: string
+  rank_requirement?: string
+  max_members: number
+  practice_schedule?: string
+  game_specific_data?: Record<string, string>
+  owner_clerk_id: string
+}) {
+  try {
+    // First get the user's internal ID
+    const user = await getUserByClerkId(teamData.owner_clerk_id)
+    if (!user) throw new Error('User not found')
+
+    // Create the team
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .insert([{
+        name: teamData.name,
+        description: teamData.description,
+        game: teamData.game,
+        region: teamData.region,
+        rank_requirement: teamData.rank_requirement,
+        max_members: teamData.max_members,
+        current_members: 1, // Owner counts as first member
+        practice_schedule: teamData.practice_schedule,
+        game_specific_data: teamData.game_specific_data,
+        owner_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single()
+
+    if (teamError) {
+      console.error('Error creating team:', teamError)
+      throw teamError
+    }
+
+    // Add owner as team member
+    const { error: membershipError } = await supabase
+      .from('team_memberships')
+      .insert([{
+        team_id: team.id,
+        user_id: user.id,
+        role: 'owner',
+        joined_at: new Date().toISOString()
+      }])
+
+    if (membershipError) {
+      console.error('Error creating team membership:', membershipError)
+      // Try to clean up the team if membership creation fails
+      await supabase.from('teams').delete().eq('id', team.id)
+      throw membershipError
+    }
+
+    return team
+  } catch (error) {
+    console.error('Error in createTeam:', error)
+    throw error
+  }
+}
+
+// Team invitations
+export async function createTeamInvitation(invitationData: {
+  team_id: string
+  inviter_clerk_id: string
+  invited_email?: string
+  invited_username?: string
+  role?: string
+}) {
+  try {
+    // Get inviter's internal ID
+    const inviter = await getUserByClerkId(invitationData.inviter_clerk_id)
+    if (!inviter) throw new Error('Inviter not found')
+
+    // Check if invitation already exists
+    const { data: existingInvite } = await supabase
+      .from('team_invitations')
+      .select('id')
+      .eq('team_id', invitationData.team_id)
+      .eq('invited_email', invitationData.invited_email || '')
+      .eq('status', 'pending')
+      .single()
+
+    if (existingInvite) {
+      throw new Error('Invitation already exists for this email')
+    }
+
+    // Create invitation
+    const { data: invitation, error } = await supabase
+      .from('team_invitations')
+      .insert([{
+        team_id: invitationData.team_id,
+        inviter_id: inviter.id,
+        invited_email: invitationData.invited_email,
+        invited_username: invitationData.invited_username,
+        role: invitationData.role || 'member',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+      }])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating team invitation:', error)
+      throw error
+    }
+
+    return invitation
+  } catch (error) {
+    console.error('Error in createTeamInvitation:', error)
+    throw error
+  }
+}
+
+// Get user's teams (as owner)
+export async function getUserOwnedTeams(clerkId: string) {
+  try {
+    const user = await getUserByClerkId(clerkId)
+    if (!user) return []
+
+    const { data, error } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching owned teams:', error)
+      throw error
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error in getUserOwnedTeams:', error)
+    return []
+  }
+}
+
+// Check if user can create team for game (optional: limit teams per game)
+export async function canUserCreateTeamForGame(clerkId: string, game: string) {
+  try {
+    const user = await getUserByClerkId(clerkId)
+    if (!user) return false
+
+    // Check existing teams for this game (limit to 3 teams per game)
+    const { count, error } = await supabase
+      .from('teams')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', user.id)
+      .eq('game', game)
+
+    if (error) {
+      console.error('Error checking team count:', error)
+      return true // Allow creation if check fails
+    }
+
+    return (count || 0) < 3 // Max 3 teams per game
+  } catch (error) {
+    console.error('Error in canUserCreateTeamForGame:', error)
+    return true
+  }
+}
