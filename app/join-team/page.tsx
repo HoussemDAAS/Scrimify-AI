@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -142,6 +143,7 @@ export default function JoinTeamPage() {
         })
       )
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const newTeamStates: Record<string, any> = {}
       stateChecks.forEach(state => {
         newTeamStates[state.teamId] = {
