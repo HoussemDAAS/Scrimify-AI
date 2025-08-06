@@ -8,6 +8,7 @@ export const createTeam = async (teamData: {
   rank_requirement?: string
   max_members: number
   practice_schedule?: string
+  logo_url?: string
   game_specific_data?: Record<string, string>
   owner_clerk_id: string
 }) => {
@@ -28,6 +29,7 @@ export const createTeam = async (teamData: {
         max_members: teamData.max_members,
         current_members: 1, // Owner counts as first member
         practice_schedule: teamData.practice_schedule,
+        logo_url: teamData.logo_url,
         game_specific_data: teamData.game_specific_data,
         owner_id: user.id,
         created_at: new Date().toISOString(),

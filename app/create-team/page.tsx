@@ -38,6 +38,7 @@ export default function CreateTeamPage() {
     rankRequirement: '',
     isPublic: true,
     practiceSchedule: '',
+    logoUrl: '',
     gameSpecificData: {} as Record<string, string>
   })
   
@@ -121,6 +122,7 @@ export default function CreateTeamPage() {
         rank_requirement: teamData.rankRequirement || undefined,
         max_members: currentGameConfig.maxMembers,
         practice_schedule: teamData.practiceSchedule.trim() || undefined,
+        logo_url: teamData.logoUrl || undefined,
         game_specific_data: Object.keys(teamData.gameSpecificData).length > 0 
           ? teamData.gameSpecificData 
           : undefined,

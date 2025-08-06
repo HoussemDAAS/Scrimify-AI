@@ -3,7 +3,9 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Settings, Sword, Shield, Globe, Star, Clock, Gamepad2, Target, Brain } from 'lucide-react'
+import { Settings, Sword, Shield, Globe, Star, Clock, Gamepad2, Target, Brain, Upload, Image as ImageIcon } from 'lucide-react'
+import { useState } from 'react'
+import Image from 'next/image'
 
 interface TeamDetailsFormProps {
   teamData: {
@@ -12,6 +14,7 @@ interface TeamDetailsFormProps {
     region: string
     rankRequirement: string
     practiceSchedule: string
+    logoUrl?: string
     gameSpecificData: Record<string, string>
   }
   currentGameConfig: any
@@ -27,6 +30,46 @@ export default function TeamDetailsForm({
   onTeamDataChange, 
   onGameSpecificChange 
 }: TeamDetailsFormProps) {
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be smaller than 2MB')
+      return
+    }
+
+    setIsUploadingLogo(true)
+
+    try {
+      // For now, we'll use a simple file URL (in production, you'd upload to cloud storage)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const logoUrl = e.target?.result as string
+        onTeamDataChange({...teamData, logoUrl})
+        setIsUploadingLogo(false)
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error('Error uploading logo:', error)
+      alert('Failed to upload logo. Please try again.')
+      setIsUploadingLogo(false)
+    }
+  }
+
+  const removeLogo = () => {
+    onTeamDataChange({...teamData, logoUrl: undefined})
+  }
+
   return (
     <Card className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
       <CardHeader className="p-6 md:p-8">
@@ -40,6 +83,68 @@ export default function TeamDetailsForm({
         </div>
 
         <div className="space-y-6">
+          {/* Team Logo */}
+          <div>
+            <Label className="text-white font-bold mb-2 flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-red-500" />
+              Team Logo
+            </Label>
+            <div className="flex items-center gap-4">
+              {/* Logo Preview */}
+              <div className="w-16 h-16 bg-gray-800 border-2 border-red-500/30 rounded-lg flex items-center justify-center overflow-hidden">
+                {teamData.logoUrl ? (
+                  <Image 
+                    src={teamData.logoUrl} 
+                    alt="Team Logo"
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Shield className="w-8 h-8 text-gray-500" />
+                )}
+              </div>
+              
+              {/* Upload Button */}
+              <div className="flex-1">
+                <label className="cursor-pointer">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                    {isUploadingLogo ? (
+                      <>
+                        <Brain className="h-4 w-4 animate-pulse" />
+                        <span className="text-sm font-bold">UPLOADING...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        <span className="text-sm font-bold">UPLOAD LOGO</span>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    disabled={isUploadingLogo}
+                  />
+                </label>
+                
+                {teamData.logoUrl && (
+                  <button
+                    onClick={removeLogo}
+                    className="ml-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="text-gray-400 text-xs mt-2">
+              Upload a team logo (PNG, JPG, max 2MB). This will be displayed on team cards and profiles.
+            </p>
+          </div>
+
           {/* Team Name */}
           <div>
             <Label htmlFor="teamName" className="text-white font-bold mb-2 flex items-center gap-2">

@@ -124,8 +124,19 @@ export default function DashboardPage() {
     loadTeams()
   }, [user, currentGame])
 
-  const getGameData = (gameId: string) => {
-    return games.find(g => g.id === gameId) || games[0]
+  const getGameDisplayName = (gameId: string) => {
+    const game = games.find(g => g.id === gameId)
+    return game?.name || gameId.toUpperCase()
+  }
+
+  const getGameLogo = (gameId: string) => {
+    const game = games.find(g => g.id === gameId)
+    return game?.logo || '/logos/valorant-logo.png'
+  }
+
+  const getGameColor = (gameId: string) => {
+    const game = games.find(g => g.id === gameId)
+    return game?.color || 'from-red-600 to-red-800'
   }
 
   if (isLoading) {
@@ -244,6 +255,13 @@ export default function DashboardPage() {
               <Plus className="w-4 h-4" />
               ADD MORE GAMES
             </SecondaryButton>
+            <SecondaryButton 
+              className="flex items-center gap-2 px-6 py-3"
+              onClick={() => router.push('/team-choice')}
+            >
+              <Users className="w-4 h-4" />
+              MANAGE TEAMS
+            </SecondaryButton>
           </div>
         </div>
 
@@ -254,34 +272,31 @@ export default function DashboardPage() {
             SELECT BATTLEFIELD
           </h2>
           <div className="flex flex-wrap justify-center gap-3 md:gap-4">
-            {selectedGames.map((gameId) => {
-              const gameData = getGameData(gameId)
-              return (
-                <button
-                  key={gameId}
-                  onClick={() => setCurrentGame(gameId)}
-                  className={`group relative flex items-center gap-2 md:gap-3 px-4 py-2 md:px-6 md:py-3 rounded-xl border-2 transition-all duration-300 ${
-                    currentGame === gameId
-                      ? 'border-red-500 bg-red-500/20 text-white'
-                      : 'border-red-500/30 bg-gray-900/60 text-gray-300 hover:border-red-500/60 hover:bg-red-500/10'
-                  }`}
-                >
-                  <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br ${gameData.color} flex items-center justify-center`}>
-                    <Image 
-                      src={gameData.logo} 
-                      alt={gameData.name}
-                      width={20}
-                      height={20}
-                      className="md:w-6 md:h-6 object-contain filter brightness-0 invert"
-                    />
-                  </div>
-                  <span className="font-bold text-sm md:text-base">{gameData.name}</span>
-                  {currentGame === gameId && (
-                    <ChevronRight className="w-4 h-4 text-red-500 animate-pulse" />
-                  )}
-                </button>
-              )
-            })}
+            {selectedGames.map((gameId) => (
+              <button
+                key={gameId}
+                onClick={() => setCurrentGame(gameId)}
+                className={`group relative flex items-center gap-2 md:gap-3 px-4 py-2 md:px-6 md:py-3 rounded-xl border-2 transition-all duration-300 ${
+                  currentGame === gameId
+                    ? 'border-red-500 bg-red-500/20 text-white'
+                    : 'border-red-500/30 bg-gray-900/60 text-gray-300 hover:border-red-500/60 hover:bg-red-500/10'
+                }`}
+              >
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br ${getGameColor(gameId)} flex items-center justify-center`}>
+                  <Image 
+                    src={getGameLogo(gameId)} 
+                    alt={getGameDisplayName(gameId)}
+                    width={20}
+                    height={20}
+                    className="md:w-6 md:h-6 object-contain filter brightness-0 invert"
+                  />
+                </div>
+                <span className="font-bold text-sm md:text-base">{getGameDisplayName(gameId)}</span>
+                {currentGame === gameId && (
+                  <ChevronRight className="w-4 h-4 text-red-500 animate-pulse" />
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -296,11 +311,14 @@ export default function DashboardPage() {
                   <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-black/40 to-black/60 rounded-full"></div>
                     <Image 
-                      src={getGameData(currentGame).logo} 
-                      alt={getGameData(currentGame).name}
+                      src={getGameLogo(currentGame)} 
+                      alt={getGameDisplayName(currentGame)}
                       width={64}
                       height={64}
-                      className="relative z-10 md:w-20 md:h-20 object-contain filter brightness-0 invert drop-shadow-2xl"
+                      className="relative z-10 md:w-20 md:h-20 object-contain drop-shadow-2xl filter brightness-110 contrast-110"
+                      style={{ 
+                        filter: 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.5)) brightness(1.1) contrast(1.1)' 
+                      }}
                     />
                   </div>
                 </div>
@@ -310,7 +328,7 @@ export default function DashboardPage() {
             <div className="text-center mb-8">
               <Badge className="bg-red-600 text-white font-bold px-6 py-3 text-lg md:text-xl border-2 border-red-500 shadow-xl shadow-red-500/30">
                 <Target className="mr-2 md:mr-3 h-5 w-5 md:h-6 md:w-6" />
-                {getGameData(currentGame).name}
+                {getGameDisplayName(currentGame)}
                 <Flame className="ml-2 md:ml-3 h-5 w-5 md:h-6 md:w-6 animate-pulse" />
               </Badge>
             </div>
@@ -337,7 +355,7 @@ export default function DashboardPage() {
                 </CardTitle>
                 
                 <CardDescription className="text-gray-400 text-base md:text-lg mb-6 px-2">
-                  Find and join existing teams for {getGameData(currentGame).name}. Get AI-matched with teams that fit your playstyle.
+                  Find and join existing teams for {getGameDisplayName(currentGame)}. Get AI-matched with teams that fit your playstyle.
                 </CardDescription>
                 
                 <PrimaryButton 
@@ -372,7 +390,7 @@ export default function DashboardPage() {
                 </CardTitle>
                 
                 <CardDescription className="text-gray-400 text-base md:text-lg mb-6 px-2">
-                  Build your own elite squad for {getGameData(currentGame).name}. Use AI to recruit the perfect teammates.
+                  Build your own elite squad for {getGameDisplayName(currentGame)}. Use AI to recruit the perfect teammates.
                 </CardDescription>
                 
                 <SecondaryButton 
@@ -395,7 +413,7 @@ export default function DashboardPage() {
           <div className="max-w-5xl mx-auto">
             <h3 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 text-center flex items-center justify-center gap-2">
               <Trophy className="w-5 h-5 md:w-6 md:h-6 text-red-500" />
-              YOUR {getGameData(currentGame).name} TEAMS
+              YOUR {getGameDisplayName(currentGame)} TEAMS
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {userTeams.map((membership) => (
