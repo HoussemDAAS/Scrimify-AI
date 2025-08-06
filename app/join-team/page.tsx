@@ -18,7 +18,7 @@ import {
   MapPin, Clock, UserPlus, LogOut, Gamepad2, Filter,
   Shield, Eye, MessageSquare, AlertCircle
 } from 'lucide-react'
-import { getUserByClerkId, searchTeamsForGame, requestToJoinTeam } from '@/lib/supabase'
+import { getUserByClerkId, searchTeamsForGame, requestToJoinTeam, isUserTeamMember, hasUserPendingRequest } from '@/lib/supabase'
 import { gameConfigs } from '@/lib/game-configs'
 
 interface TeamWithMemberships {
@@ -51,6 +51,11 @@ export default function JoinTeamPage() {
   const [selectedTeam, setSelectedTeam] = useState<TeamWithMemberships | null>(null)
   const [joinMessage, setJoinMessage] = useState('')
   const [isJoining, setIsJoining] = useState(false)
+  const [teamStates, setTeamStates] = useState<Record<string, {
+    isMember: boolean
+    hasPendingRequest: boolean
+    isLoading: boolean
+  }>>({})
   
   // Search filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -94,12 +99,14 @@ export default function JoinTeamPage() {
   }, [user, router, gameParam])
 
   useEffect(() => {
-    if (selectedGame) {
+    if (selectedGame && user) {
       searchTeams()
     }
-  }, [selectedGame])
+  }, [selectedGame, user])
 
   const searchTeams = async () => {
+    if (!user) return
+    
     setIsSearching(true)
     try {
       const searchResults = await searchTeamsForGame(selectedGame, {
@@ -108,6 +115,42 @@ export default function JoinTeamPage() {
         rankRequirement: rankFilter || undefined
       })
       setTeams(searchResults)
+
+      // Check membership and request status for each team
+      const stateChecks = await Promise.all(
+        searchResults.map(async (team) => {
+          try {
+            const [isMember, hasPendingRequest] = await Promise.all([
+              isUserTeamMember(user.id, team.id),
+              hasUserPendingRequest(user.id, team.id)
+            ])
+            return {
+              teamId: team.id,
+              isMember,
+              hasPendingRequest,
+              isLoading: false
+            }
+          } catch (error) {
+            console.error(`Error checking team ${team.id} status:`, error)
+            return {
+              teamId: team.id,
+              isMember: false,
+              hasPendingRequest: false,
+              isLoading: false
+            }
+          }
+        })
+      )
+
+      const newTeamStates: Record<string, any> = {}
+      stateChecks.forEach(state => {
+        newTeamStates[state.teamId] = {
+          isMember: state.isMember,
+          hasPendingRequest: state.hasPendingRequest,
+          isLoading: false
+        }
+      })
+      setTeamStates(newTeamStates)
     } catch (error) {
       console.error('Error searching teams:', error)
       setTeams([])
@@ -126,16 +169,45 @@ export default function JoinTeamPage() {
     setIsJoining(true)
     try {
       await requestToJoinTeam(team.id, user.id, joinMessage)
+      
+      // Update team state
+      setTeamStates(prev => ({
+        ...prev,
+        [team.id]: {
+          ...prev[team.id],
+          hasPendingRequest: true
+        }
+      }))
+      
       alert(`Join request sent to "${team.name}"! The team owner will review your request.`)
       setSelectedTeam(null)
       setJoinMessage('')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error sending join request:', error)
       alert(error.message || 'Failed to send join request. Please try again.')
     } finally {
       setIsJoining(false)
     }
+  }
+
+  const getTeamButtonState = (team: TeamWithMemberships) => {
+    const state = teamStates[team.id]
+    
+    if (!state) return { type: 'loading', text: 'CHECKING...', disabled: true }
+    
+    if (state.isMember) {
+      return { type: 'member', text: 'MEMBER', disabled: true }
+    }
+    
+    if (state.hasPendingRequest) {
+      return { type: 'pending', text: 'PENDING', disabled: true }
+    }
+    
+    if (team.current_members >= team.max_members) {
+      return { type: 'full', text: 'FULL', disabled: true }
+    }
+    
+    return { type: 'join', text: 'JOIN', disabled: false }
   }
 
   const currentGameConfig = gameConfigs[selectedGame as keyof typeof gameConfigs] || gameConfigs.valorant
@@ -471,25 +543,73 @@ export default function JoinTeamPage() {
                       <Eye className="w-3 h-3 mr-1" />
                       VIEW
                     </SecondaryButton>
-                    {team.current_members < team.max_members ? (
-                      <PrimaryButton 
-                        size="sm" 
-                        className="flex-1 text-xs"
-                        onClick={() => setSelectedTeam(team)}
-                      >
-                        <UserPlus className="w-3 h-3 mr-1" />
-                        JOIN
-                      </PrimaryButton>
-                    ) : (
-                      <SecondaryButton 
-                        size="sm" 
-                        className="flex-1 text-xs opacity-50" 
-                        disabled
-                      >
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        FULL
-                      </SecondaryButton>
-                    )}
+                    
+                    {(() => {
+                      const buttonState = getTeamButtonState(team)
+                      
+                      if (buttonState.type === 'member') {
+                        return (
+                          <SecondaryButton 
+                            size="sm" 
+                            className="flex-1 text-xs bg-green-600/20 text-green-400 border-green-500/30" 
+                            disabled
+                          >
+                            <Users className="w-3 h-3 mr-1" />
+                            {buttonState.text}
+                          </SecondaryButton>
+                        )
+                      }
+                      
+                      if (buttonState.type === 'pending') {
+                        return (
+                          <SecondaryButton 
+                            size="sm" 
+                            className="flex-1 text-xs bg-yellow-600/20 text-yellow-400 border-yellow-500/30" 
+                            disabled
+                          >
+                            <Clock className="w-3 h-3 mr-1" />
+                            {buttonState.text}
+                          </SecondaryButton>
+                        )
+                      }
+                      
+                      if (buttonState.type === 'full') {
+                        return (
+                          <SecondaryButton 
+                            size="sm" 
+                            className="flex-1 text-xs opacity-50" 
+                            disabled
+                          >
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            {buttonState.text}
+                          </SecondaryButton>
+                        )
+                      }
+                      
+                      if (buttonState.type === 'loading') {
+                        return (
+                          <SecondaryButton 
+                            size="sm" 
+                            className="flex-1 text-xs" 
+                            disabled
+                          >
+                            <Brain className="w-3 h-3 mr-1 animate-pulse" />
+                            {buttonState.text}
+                          </SecondaryButton>
+                        )
+                      }
+                      
+                      return (
+                        <PrimaryButton 
+                          size="sm" 
+                          className="flex-1 text-xs"
+                          onClick={() => setSelectedTeam(team)}
+                        >
+                          <UserPlus className="w-3 h-3 mr-1" />
+                          {buttonState.text}
+                        </PrimaryButton>
+                      )
+                    })()}
                   </div>
                 </CardHeader>
               </Card>
@@ -570,30 +690,57 @@ export default function JoinTeamPage() {
                   >
                     CANCEL
                   </SecondaryButton>
-                  {selectedTeam.current_members < selectedTeam.max_members ? (
-                    <PrimaryButton 
-                      onClick={() => handleJoinRequest(selectedTeam)}
-                      disabled={isJoining}
-                      className="flex-1"
-                    >
-                      {isJoining ? (
-                        <>
-                          <Brain className="mr-2 h-4 w-4 animate-pulse" />
-                          SENDING...
-                        </>
-                      ) : (
-                        <>
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          SEND REQUEST
-                        </>
-                      )}
-                    </PrimaryButton>
-                  ) : (
-                    <SecondaryButton disabled className="flex-1">
-                      <AlertCircle className="mr-2 h-4 w-4" />
-                      TEAM FULL
-                    </SecondaryButton>
-                  )}
+                  
+                  {(() => {
+                    const buttonState = getTeamButtonState(selectedTeam)
+                    
+                    if (buttonState.type === 'member') {
+                      return (
+                        <SecondaryButton disabled className="flex-1 bg-green-600/20 text-green-400">
+                          <Users className="mr-2 h-4 w-4" />
+                          ALREADY MEMBER
+                        </SecondaryButton>
+                      )
+                    }
+                    
+                    if (buttonState.type === 'pending') {
+                      return (
+                        <SecondaryButton disabled className="flex-1 bg-yellow-600/20 text-yellow-400">
+                          <Clock className="mr-2 h-4 w-4" />
+                          REQUEST PENDING
+                        </SecondaryButton>
+                      )
+                    }
+                    
+                    if (buttonState.type === 'full') {
+                      return (
+                        <SecondaryButton disabled className="flex-1">
+                          <AlertCircle className="mr-2 h-4 w-4" />
+                          TEAM FULL
+                        </SecondaryButton>
+                      )
+                    }
+                    
+                    return (
+                      <PrimaryButton 
+                        onClick={() => handleJoinRequest(selectedTeam)}
+                        disabled={isJoining}
+                        className="flex-1"
+                      >
+                        {isJoining ? (
+                          <>
+                            <Brain className="mr-2 h-4 w-4 animate-pulse" />
+                            SENDING...
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            SEND REQUEST
+                          </>
+                        )}
+                      </PrimaryButton>
+                    )
+                  })()}
                 </div>
               </CardContent>
             </Card>

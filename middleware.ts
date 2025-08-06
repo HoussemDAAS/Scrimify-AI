@@ -10,7 +10,6 @@ const isPublicRoute = createRouteMatcher([
 
 const isProtectedRoute = createRouteMatcher([
   '/game-selection',
-  '/team-choice',
   '/dashboard',
   '/teams/(.*)',
   '/join-team',
@@ -23,42 +22,49 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Helper function to normalize games to array format (same as in supabase.ts)
+function normalizeGamesToArray(games: string | string[] | null | undefined): string[] {
+  if (!games) return []
+  if (Array.isArray(games)) return games
+  if (typeof games === 'string') return games ? [games] : []
+  return []
+}
+
 // Helper function to check user's onboarding status
 async function getUserOnboardingStatus(userId: string) {
   try {
     // Check if user exists and has selected games
-    const { data: user } = await supabase
+    const { data: user, error } = await supabase
       .from('users')
       .select('id, selected_game')
       .eq('clerk_id', userId)
       .single()
     
-    if (!user) {
-      return { hasGames: false, hasTeams: false, needsOnboarding: true }
+    // If user doesn't exist in database, they're a new user
+    if (error && error.code === 'PGRST116') {
+      return { hasGames: false, isNewUser: true, needsOnboarding: true }
     }
     
-    const hasGames = user.selected_game && 
-      (Array.isArray(user.selected_game) ? user.selected_game.length > 0 : !!user.selected_game)
-    
-    if (!hasGames) {
-      return { hasGames: false, hasTeams: false, needsOnboarding: true }
+    if (error) {
+      console.error('Error fetching user:', error)
+      return { hasGames: false, isNewUser: true, needsOnboarding: true }
     }
     
-    // Check if user has teams
-    const { count } = await supabase
-      .from('team_memberships')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
+    // User exists - normalize and check if they have games selected
+    const normalizedGames = normalizeGamesToArray(user.selected_game)
+    const hasGames = normalizedGames.length > 0
     
-    const hasTeams = (count || 0) > 0
+    console.log(`User ${userId} - Games:`, normalizedGames, `- HasGames: ${hasGames}`)
     
     return { 
       hasGames, 
-      hasTeams, 
-      needsOnboarding: !hasGames || !hasTeams 
+      isNewUser: false,
+      needsOnboarding: !hasGames,
+      selectedGames: normalizedGames
     }
   } catch (error) {
-    return { hasGames: false, hasTeams: false, needsOnboarding: true }
+    console.error('Error in getUserOnboardingStatus:', error)
+    return { hasGames: false, isNewUser: true, needsOnboarding: true }
   }
 }
 
@@ -78,32 +84,32 @@ export default clerkMiddleware(async (auth, req) => {
     if (currentPath.startsWith('/sign-in') || currentPath.startsWith('/sign-up')) {
       const status = await getUserOnboardingStatus(userId)
       
+      // New users (not in database) should go to game selection
+      if (status.isNewUser) {
+        return NextResponse.redirect(new URL('/game-selection', req.url))
+      }
+      
+      // Existing users: check if they have games selected in database
       if (!status.hasGames) {
         return NextResponse.redirect(new URL('/game-selection', req.url))
-      } else if (!status.hasTeams) {
-        return NextResponse.redirect(new URL('/team-choice', req.url))
-      } else {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
       }
+      
+      // Existing users with games go directly to dashboard
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
     
     // For other protected routes, ensure proper onboarding flow
     if (isProtectedRoute(req)) {
       const status = await getUserOnboardingStatus(userId)
       
-      // If user hasn't selected games yet
+      // Only redirect to game selection if user hasn't selected games yet
       if (!status.hasGames && currentPath !== '/game-selection') {
         return NextResponse.redirect(new URL('/game-selection', req.url))
       }
       
-      // If user has games but no teams, and trying to access dashboard
-      if (status.hasGames && !status.hasTeams && currentPath === '/dashboard') {
-        return NextResponse.redirect(new URL('/team-choice', req.url))
-      }
-      
-      // Allow access to team-choice if they have games
-      if (currentPath === '/team-choice' && !status.hasGames) {
-        return NextResponse.redirect(new URL('/game-selection', req.url))
+      // Allow access to dashboard if user has games
+      if (status.hasGames && currentPath === '/dashboard') {
+        return NextResponse.next()
       }
     }
   }

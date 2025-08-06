@@ -10,6 +10,8 @@ import { PrimaryButton } from '@/components/ui/primary-button'
 import { SecondaryButton } from '@/components/ui/secondary-button'
 import { AccentButton } from '@/components/ui/accent-button'
 import { Badge } from '@/components/ui/badge'
+import TeamCard from '@/components/TeamCard'
+import NotificationDropdown from '@/components/NotificationDropdown'
 import { 
   Crosshair, 
   Trophy, 
@@ -24,8 +26,7 @@ import {
   Settings,
   LogOut,
   Gamepad2,
-  ChevronRight,
-  Star
+  ChevronRight
 } from 'lucide-react'
 import { getUserByClerkId, getUserTeamsForGame, TeamMembership, Team } from '@/lib/supabase'
 
@@ -196,8 +197,14 @@ export default function DashboardPage() {
           <span className="hidden lg:block font-bold text-sm md:text-base">MANAGE GAMES</span>
         </Link>
 
-        {/* User Profile & Logout */}
-        <div className="flex items-center gap-2 md:gap-4">
+        {/* User Profile & Actions */}
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Notification Dropdown */}
+          {user && (
+            <NotificationDropdown clerkId={user.id} />
+          )}
+
+          {/* User Profile */}
           <div className="flex items-center gap-2 md:gap-3 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg px-2 py-1 md:px-4 md:py-2">
             <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center">
               <Users className="w-3 h-3 md:w-4 md:h-4 text-white" />
@@ -208,6 +215,7 @@ export default function DashboardPage() {
             </div>
           </div>
           
+          {/* Logout Button */}
           <AccentButton
             onClick={() => signOut()}
             size="sm"
@@ -257,10 +265,10 @@ export default function DashboardPage() {
             </SecondaryButton>
             <SecondaryButton 
               className="flex items-center gap-2 px-6 py-3"
-              onClick={() => router.push('/team-choice')}
+              onClick={() => router.push(`/create-team?game=${currentGame}`)}
             >
               <Users className="w-4 h-4" />
-              MANAGE TEAMS
+              CREATE TEAM
             </SecondaryButton>
           </div>
         </div>
@@ -417,27 +425,48 @@ export default function DashboardPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {userTeams.map((membership) => (
-                <Card key={membership.id} className="bg-gradient-to-br from-gray-900/90 to-black/90 border border-red-500/30 hover:border-red-500/60 transition-all duration-300">
-                  <CardHeader className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <CardTitle className="text-white text-lg font-bold">{membership.teams.name}</CardTitle>
-                      <Badge className="bg-red-600 text-white text-xs">
-                        {membership.role.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-gray-400 text-sm mb-3">
-                      {membership.teams.description || 'Competitive team looking for glory'}
-                    </CardDescription>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{membership.teams.current_members}/{membership.teams.max_members} Members</span>
-                      <span className="flex items-center gap-1">
-                        <Star className="w-3 h-3" />
-                        {membership.teams.rank_requirement || 'Any Rank'}
-                      </span>
-                    </div>
-                  </CardHeader>
-                </Card>
+                <TeamCard
+                  key={membership.id}
+                  team={membership.teams}
+                  membership={membership}
+                  onClick={() => {
+                    // TODO: Navigate to team details page
+                    console.log('Navigate to team:', membership.teams.name)
+                  }}
+                />
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* No Teams Message */}
+        {userTeams.length === 0 && currentGame && (
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="bg-gradient-to-br from-gray-900/60 to-black/60 backdrop-blur-lg border border-red-500/20 rounded-2xl p-6 md:p-8">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-white text-xl font-bold mb-2">No Teams Yet</h3>
+              <p className="text-gray-400 mb-6">
+                You haven't joined any teams for {getGameDisplayName(currentGame)} yet. 
+                Create your own squad or join an existing team to get started!
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <PrimaryButton 
+                  onClick={() => router.push(`/create-team?game=${currentGame}`)}
+                  className="px-6 py-3"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Team
+                </PrimaryButton>
+                <SecondaryButton 
+                  onClick={() => router.push(`/join-team?game=${currentGame}`)}
+                  className="px-6 py-3"
+                >
+                  <Search className="mr-2 h-4 w-4" />
+                  Find Teams
+                </SecondaryButton>
+              </div>
             </div>
           </div>
         )}

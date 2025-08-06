@@ -12,8 +12,7 @@ import {
   ArrowLeft, Brain, Target, Plus, Crown, Flame, LogOut, Gamepad2, 
   Users, CheckCircle
 } from 'lucide-react'
-import { getUserByClerkId } from '@/lib/supabase'
-import { createTeam, createTeamInvitation } from '@/lib/team-functions'
+import { getUserByClerkId, createTeam, createTeamInvitation } from '@/lib/supabase'
 import { gameConfigs } from '@/lib/game-configs'
 import TeamDetailsForm from '@/components/TeamDetailsForm'
 import MemberInvitations from '@/components/MemberInvitations'
@@ -122,7 +121,7 @@ export default function CreateTeamPage() {
         rank_requirement: teamData.rankRequirement || undefined,
         max_members: currentGameConfig.maxMembers,
         practice_schedule: teamData.practiceSchedule.trim() || undefined,
-        logo_url: teamData.logoUrl || undefined,
+        logo_url: teamData.logoUrl || undefined,  // Fixed: use logoUrl from teamData
         game_specific_data: Object.keys(teamData.gameSpecificData).length > 0 
           ? teamData.gameSpecificData 
           : undefined,
@@ -133,22 +132,25 @@ export default function CreateTeamPage() {
 
       // Send invitations to members
       const validInvites = inviteEmails.filter(email => email.trim())
-      const invitePromises = validInvites.map(email => 
-        createTeamInvitation({
-          team_id: newTeam.id,
-          inviter_clerk_id: user.id,
-          invited_email: email.trim().includes('@') ? email.trim() : undefined,
-          invited_username: !email.trim().includes('@') ? email.trim() : undefined,
-          role: 'member'
-        }).catch(error => {
-          console.error(`Failed to send invitation to ${email}:`, error)
-          return null
-        })
-      )
+      if (validInvites.length > 0) {
+        const invitePromises = validInvites.map(email => 
+          createTeamInvitation({
+            team_id: newTeam.id,
+            inviter_clerk_id: user.id,
+            invited_email: email.trim().includes('@') ? email.trim() : undefined,
+            invited_username: !email.trim().includes('@') ? email.trim() : undefined,
+            role: 'member'
+          }).catch(error => {
+            console.error(`Failed to send invitation to ${email}:`, error)
+            return null
+          })
+        )
 
-      await Promise.allSettled(invitePromises)
-      
-      alert(`Team "${teamData.name}" created successfully! ${validInvites.length > 0 ? `Invitations sent to ${validInvites.length} members.` : ''}`)
+        await Promise.allSettled(invitePromises)
+        alert(`Team "${teamData.name}" created successfully! Invitations sent to ${validInvites.length} members.`)
+      } else {
+        alert(`Team "${teamData.name}" created successfully!`)
+      }
       
       router.push('/dashboard')
       

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Settings, Sword, Shield, Globe, Star, Clock, Gamepad2, Target, Brain, Upload, Image as ImageIcon } from 'lucide-react'
 import { useState } from 'react'
 import Image from 'next/image'
+import { uploadTeamLogo, deleteTeamLogo } from '@/lib/supabase'
 
 interface TeamDetailsFormProps {
   teamData: {
@@ -51,14 +52,19 @@ export default function TeamDetailsForm({
     setIsUploadingLogo(true)
 
     try {
-      // For now, we'll use a simple file URL (in production, you'd upload to cloud storage)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const logoUrl = e.target?.result as string
-        onTeamDataChange({...teamData, logoUrl})
-        setIsUploadingLogo(false)
+      // Generate a temporary team ID for upload (you can use a UUID generator or timestamp)
+      const tempTeamId = `temp-${Date.now()}`
+      
+      // Upload to Supabase Storage
+      const logoUrl = await uploadTeamLogo(file, tempTeamId)
+      
+      // Delete old logo if exists
+      if (teamData.logoUrl && teamData.logoUrl.includes('supabase')) {
+        await deleteTeamLogo(teamData.logoUrl)
       }
-      reader.readAsDataURL(file)
+      
+      onTeamDataChange({...teamData, logoUrl})
+      setIsUploadingLogo(false)
     } catch (error) {
       console.error('Error uploading logo:', error)
       alert('Failed to upload logo. Please try again.')
@@ -66,8 +72,18 @@ export default function TeamDetailsForm({
     }
   }
 
-  const removeLogo = () => {
-    onTeamDataChange({...teamData, logoUrl: undefined})
+  const removeLogo = async () => {
+    try {
+      // Delete from storage if it's a Supabase URL
+      if (teamData.logoUrl && teamData.logoUrl.includes('supabase')) {
+        await deleteTeamLogo(teamData.logoUrl)
+      }
+      onTeamDataChange({...teamData, logoUrl: undefined})
+    } catch (error) {
+      console.error('Error removing logo:', error)
+      // Still remove from UI even if deletion fails
+      onTeamDataChange({...teamData, logoUrl: undefined})
+    }
   }
 
   return (
@@ -141,7 +157,7 @@ export default function TeamDetailsForm({
               </div>
             </div>
             <p className="text-gray-400 text-xs mt-2">
-              Upload a team logo (PNG, JPG, max 2MB). This will be displayed on team cards and profiles.
+              Upload a team logo (PNG, JPG, max 2MB). Images are stored securely and optimized for fast loading.
             </p>
           </div>
 
