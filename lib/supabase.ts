@@ -16,6 +16,19 @@ export interface User {
   username: string
   selected_game: string | string[]
   team_id?: string
+  // New profile fields
+  bio?: string
+  location?: string
+  avatar_url?: string
+  discord_username?: string
+  riot_username?: string
+  riot_tagline?: string
+  riot_account_verified?: boolean
+  riot_puuid?: string
+  date_of_birth?: string
+  timezone?: string
+  competitive_level?: string
+  looking_for_team?: boolean
   created_at: string
   updated_at: string
 }
@@ -296,18 +309,63 @@ export async function getUserTeamCount(clerkId: string) {
     if (error) return 0
     return count || 0
   } catch (error) {
+    console.error('Error in getUserTeamCount:', error)
     return 0
   }
 }
 
-export async function uploadTeamLogo(file: File, teamId: string): Promise<string> {
+// User Profile Management Functions
+export async function updateUserProfile(clerkId: string, profileData: {
+  username?: string
+  bio?: string
+  location?: string
+  avatar_url?: string
+  discord_username?: string
+  riot_username?: string
+  riot_tagline?: string
+  riot_account_verified?: boolean
+  riot_puuid?: string
+  date_of_birth?: string
+  timezone?: string
+  competitive_level?: string
+  looking_for_team?: boolean
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        ...profileData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('clerk_id', clerkId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating user profile:', error)
+      throw error
+    }
+
+    if (data) {
+      data.selected_game = normalizeGamesToArray(data.selected_game)
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in updateUserProfile:', error)
+    throw error
+  }
+}
+
+export async function uploadUserAvatar(file: File, clerkId: string): Promise<string> {
   try {
     const fileExt = file.name.split('.').pop()
-    const fileName = `${teamId}-${Date.now()}.${fileExt}`
-    const filePath = `team-logos/${fileName}`
+    const fileName = `${clerkId}-${Date.now()}.${fileExt}`
+    const filePath = `user-avatars/${fileName}`
 
+    // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('team-assets')
+      .from('user-assets')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -318,34 +376,36 @@ export async function uploadTeamLogo(file: File, teamId: string): Promise<string
       throw error
     }
 
+    // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('team-assets')
+      .from('user-assets')
       .getPublicUrl(data.path)
 
     return publicUrl
   } catch (error) {
-    console.error('Error uploading team logo:', error)
+    console.error('Error uploading user avatar:', error)
     throw error
   }
 }
 
-export async function deleteTeamLogo(logoUrl: string): Promise<void> {
+export async function deleteUserAvatar(avatarUrl: string): Promise<void> {
   try {
-    const urlParts = logoUrl.split('/team-assets/')
+    const urlParts = avatarUrl.split('/user-assets/')
     if (urlParts.length < 2) return
 
     const filePath = urlParts[1]
 
     const { error } = await supabase.storage
-      .from('team-assets')
-      .remove([`team-logos/${filePath.split('/').pop()}`])
+      .from('user-assets')
+      .remove([filePath])
 
     if (error) {
       console.error('Storage delete error:', error)
       throw error
     }
   } catch (error) {
-    console.error('Error deleting team logo:', error)
+    console.error('Error deleting user avatar:', error)
+    // Ignore error for now as deletion is not critical
   }
 }
 

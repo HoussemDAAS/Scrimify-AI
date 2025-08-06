@@ -114,7 +114,7 @@ export default function NotificationDropdown({ clerkId }: NotificationDropdownPr
                           {notification.message && (
                             <div className="mb-2 p-2 bg-gray-800/50 rounded text-xs">
                               <MessageSquare className="w-3 h-3 inline mr-1 text-blue-400" />
-                              <span className="text-gray-300 italic">"{notification.message}"</span>
+                              <span className="text-gray-300 italic">&quot;{notification.message}&quot;</span>
                             </div>
                           )}
                           

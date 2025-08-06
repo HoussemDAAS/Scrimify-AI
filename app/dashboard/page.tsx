@@ -202,10 +202,10 @@ export default function DashboardPage() {
             <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center">
               <Users className="w-3 h-3 md:w-4 md:h-4 text-white" />
             </div>
-            <div className="hidden sm:block">
-              <p className="text-white font-bold text-xs md:text-sm">{user?.username || user?.firstName || 'Warrior'}</p>
-              <p className="text-gray-400 text-xs">{selectedGames.length} Games • {userTeams.length} Teams</p>
-            </div>
+            <Link href="/profile" className="hidden sm:block group">
+              <p className="text-white font-bold text-xs md:text-sm group-hover:text-red-300 transition-colors">{user?.username || user?.firstName || 'Warrior'}</p>
+              <p className="text-gray-400 text-xs group-hover:text-gray-300 transition-colors">{selectedGames.length} Games • {userTeams.length} Teams</p>
+            </Link>
           </div>
           
           <AccentButton
@@ -430,7 +430,7 @@ export default function DashboardPage() {
               </div>
               <h3 className="text-white text-xl font-bold mb-2">No Teams Yet</h3>
               <p className="text-gray-400 mb-6">
-                You haven't joined any teams for {getGameDisplayName(currentGame)} yet. 
+                You haven&apos;t joined any teams for {getGameDisplayName(currentGame)} yet. 
                 Create your own squad or join an existing team to get started!
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">

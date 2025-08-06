@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PrimaryButton } from '@/components/ui/primary-button'
@@ -7,13 +8,10 @@ import { Avatar } from '@/components/ui/avatar'
 import { 
   Users, 
   UserPlus, 
-  UserX, 
   Clock, 
   MessageSquare, 
-  Crown,
   CheckCircle,
   XCircle,
-  AlertCircle
 } from 'lucide-react'
 import { getTeamJoinRequests, respondToJoinRequest, TeamJoinRequest } from '@/lib/supabase'
 
@@ -110,7 +108,7 @@ export default function TeamJoinRequests({ teamId, clerkId, onRequestHandled }: 
           <div className="text-center py-8">
             <UserPlus className="w-12 h-12 text-gray-600 mx-auto mb-3" />
             <h3 className="text-white text-lg font-bold mb-2">No Pending Requests</h3>
-            <p className="text-gray-400">Your team doesn't have any pending join requests at the moment.</p>
+            <p className="text-gray-400">Your team doesn&apos;t have any pending join requests at the moment.</p>
           </div>
         </CardContent>
       </Card>
@@ -165,7 +163,7 @@ export default function TeamJoinRequests({ teamId, clerkId, onRequestHandled }: 
                   <MessageSquare className="w-4 h-4 text-blue-400" />
                   <span className="text-blue-400 text-sm font-bold">Message:</span>
                 </div>
-                <p className="text-gray-300 text-sm italic">"{request.message}"</p>
+                <p className="text-gray-300 text-sm italic">&quot;{request.message}&quot;</p>
               </div>
             )}
 

@@ -1,0 +1,549 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+const RIOT_API_KEY = process.env.RIOT_API_KEY
+
+// --- TypeScript Interfaces ---
+// Enhanced interface to include profile information
+interface GameStats {
+  // Profile information
+  profileIcon?: string
+  summonerLevel?: number
+  accountLevel?: number
+  
+ 
+  rank: string
+  rankIconUrl?: string // Added for Valorant rank icon
+  rr?: string // Valorant Rank Rating
+  lp?: string // League of Legends League Points
+  
+ 
+  mainAgent?: string // Future implementation
+  mainRole?: string // We can now calculate this
+  winRate: string // We can now calculate this
+  gamesPlayed?: number
+  lastPlayed: string
+}
+
+interface LoLQueueData {
+  queueType: string
+  tier: string
+  rank: string
+  leaguePoints: number
+  wins: number
+  losses: number
+}
+
+interface ValRankData {
+    currenttier: number;
+    currenttierpatched: string;
+    // ... other fields we might use later
+}
+
+// --- Riot API Configuration ---
+// ADDED Match History Endpoints
+const RIOT_ENDPOINTS = {
+  // Account API (Universal)
+  accountByNameTag: (region: string, gameName: string, tagLine: string) => 
+    `https://${region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
+  
+  // League of Legends API
+  lolSummoner: (platform: string, puuid: string) => 
+    `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`,
+  
+  lolRank: (platform: string, summonerId: string) => 
+    `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`,
+
+  // NEW: Match History Endpoints
+  lolMatchIds: (routingRegion: string, puuid: string, count: number = 20) =>
+    `https://${routingRegion}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=${count}`,
+  
+  lolMatchById: (routingRegion: string, matchId: string) =>
+    `https://${routingRegion}.api.riotgames.com/lol/match/v5/matches/${matchId}`,
+
+  // Valorant API
+  valRankByPuuid: (platform: string, puuid: string) =>
+    `https://${platform}.api.riotgames.com/val/ranked/v1/by-puuid/${puuid}`
+}
+
+// --- Helper Functions ---
+
+/**
+ * A robust helper to make secure, server-side calls to the Riot API.
+ * Includes improved error handling.
+ */
+async function riotApiCall(url: string) {
+  if (!RIOT_API_KEY) {
+    throw new Error('Riot API key not configured on the server.')
+  }
+
+  console.log('Making Riot API call to:', url)
+
+  const response = await fetch(url, {
+    headers: {
+      'X-Riot-Token': RIOT_API_KEY,
+    },
+    // Use Next.js caching to avoid hitting rate limits for repeated requests.
+    // This caches the data for 10 minutes.
+    next: { revalidate: 600 } 
+  })
+  
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ message: 'Failed to parse error body' }));
+    console.error(`Riot API Error: ${response.status} on ${url}`, errorBody);
+    
+    switch (response.status) {
+        case 400: throw new Error('Bad request. Check your parameters.');
+        case 401: throw new Error('Unauthorized. Check your API key permissions.');
+        case 403: throw new Error('Forbidden. Your API key may be invalid or expired.');
+        case 404: throw new Error('Data not found. The player may be unranked or the Riot ID is incorrect.');
+        case 429: throw new Error('Rate limit exceeded. Please wait before trying again.');
+        default: throw new Error(`Riot API returned an error: ${response.status}`);
+    }
+  }
+  
+  return response.json()
+}
+
+/**
+ * UPDATED: Now provides a 'routing' region for match history APIs
+ * FIX: This function is now more robust. It provides the correct routing
+ * values for both the universal Account API and game-specific platform APIs.
+ */
+function getRegionalRouting(region: string) {
+  const r = region.toLowerCase();
+  // Americas
+  if (['na', 'br', 'lan', 'las', 'americas'].includes(r)) {
+    return { account: 'americas', lolPlatform: 'na1', valPlatform: 'na', lolRouting: 'americas' };
+  }
+  // Europe
+  if (['euw', 'eune', 'tr', 'ru', 'europe'].includes(r)) {
+    return { account: 'europe', lolPlatform: 'euw1', valPlatform: 'eu', lolRouting: 'europe' };
+  }
+  // Asia
+  if (['kr', 'jp', 'asia'].includes(r)) {
+    return { account: 'asia', lolPlatform: 'kr', valPlatform: 'ap', lolRouting: 'asia' };
+  }
+  // Default to Americas
+  return { account: 'americas', lolPlatform: 'na1', valPlatform: 'na', lolRouting: 'americas' };
+}
+
+/**
+ * NEW: Enhanced match history analysis with rank estimation
+ * This function analyzes match data to estimate player rank when summoner ID is unavailable
+ */
+async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
+    try {
+        console.log('🔍 Fetching enhanced match history for detailed stats...')
+        
+        // Fetch more matches for better analysis (up to 100)
+        const matchIds: string[] = await riotApiCall(RIOT_ENDPOINTS.lolMatchIds(routingRegion, puuid, 100));
+
+        if (matchIds.length === 0) {
+            console.log('⚠️ No match history found')
+            return {
+                winRate: '0%',
+                mainRole: 'Unknown',
+                gamesPlayed: 0,
+                lastRankedMatch: 'No matches found',
+                estimatedRank: 'Unknown'
+            };
+        }
+
+        let wins = 0;
+        let losses = 0;
+        const roleCounts: Record<string, number> = {};
+        let rankedGamesAnalyzed = 0;
+        let totalGamesAnalyzed = 0;
+        let lastRankedMatch = 'No ranked games found';
+        
+        // For rank estimation
+        const avgTeamRanks: number[] = [];
+        let totalKDA = 0;
+        let kdaCount = 0;
+
+        console.log(`📊 Analyzing up to ${Math.min(50, matchIds.length)} recent matches for ranked data...`)
+
+        // Process fewer matches and add longer delays to avoid rate limits
+        const batchSize = 5; // Reduced batch size
+        const maxMatches = 50; // Analyze fewer matches to avoid rate limits
+        
+        for (let batchStart = 0; batchStart < Math.min(maxMatches, matchIds.length); batchStart += batchSize) {
+            const batchEnd = Math.min(batchStart + batchSize, Math.min(maxMatches, matchIds.length));
+            const batchIds = matchIds.slice(batchStart, batchEnd);
+            
+            console.log(`🔄 Processing batch ${Math.floor(batchStart/batchSize) + 1}: matches ${batchStart + 1}-${batchEnd}`)
+            
+            // Add longer delay between batches to respect rate limits
+            if (batchStart > 0) {
+                console.log('⏳ Waiting 2 seconds to respect rate limits...')
+                await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+            }
+            
+            // Process matches one by one with delays to avoid rate limiting
+            for (const matchId of batchIds) {
+                try {
+                    const match = await riotApiCall(RIOT_ENDPOINTS.lolMatchById(routingRegion, matchId));
+                    const participant = match.info.participants.find((p: any) => p.puuid === puuid);
+                    
+                    if (!participant) continue;
+                    
+                    totalGamesAnalyzed++;
+                    
+                    // Check if this is a ranked game (queue ID filtering)
+                    const isRankedSolo = match.info.queueId === 420; // Ranked Solo/Duo
+                    const isRankedFlex = match.info.queueId === 440; // Ranked Flex
+                    const isRanked = isRankedSolo || isRankedFlex;
+                    
+                    console.log(`🎮 Match ${totalGamesAnalyzed}: Queue ${match.info.queueId} (${isRanked ? 'RANKED' : 'Normal'}) - ${participant.win ? 'WIN' : 'LOSS'}`)
+                    
+                    if (isRanked) {
+                        rankedGamesAnalyzed++;
+                        
+                        // Update last ranked match timestamp
+                        if (rankedGamesAnalyzed === 1) {
+                            const matchDate = new Date(match.info.gameStartTimestamp);
+                            lastRankedMatch = matchDate.toLocaleDateString();
+                        }
+                        
+                        // Count wins/losses for ranked games only
+                        if (participant.win) {
+                            wins++;
+                        } else {
+                            losses++;
+                        }
+                        
+                        // Count roles for ranked games only
+                        const role = participant.teamPosition || participant.individualPosition || 'UNKNOWN';
+                        if (role && role !== 'UNKNOWN') {
+                            roleCounts[role] = (roleCounts[role] || 0) + 1;
+                        }
+                        
+                        // Estimate rank from match performance indicators
+                        const kda = (participant.kills + participant.assists) / Math.max(participant.deaths, 1);
+                        totalKDA += kda;
+                        kdaCount++;
+                        
+                        // Calculate average team rank based on match duration and game statistics
+                        // Longer games typically indicate higher rank (more strategic play)
+                        const gameDurationMinutes = match.info.gameDuration / 60;
+                        const avgLevel = match.info.participants.reduce((sum: number, p: any) => sum + p.champLevel, 0) / 10;
+                        
+                        // Simple heuristic: combine game duration, champion level, and KDA
+                        let rankEstimate = 0;
+                        if (gameDurationMinutes > 35 && avgLevel > 16) rankEstimate += 2; // Potentially Gold+
+                        if (gameDurationMinutes > 40 && avgLevel > 17) rankEstimate += 2; // Potentially Plat+
+                        if (kda > 2.0) rankEstimate += 1; // Good performance
+                        if (participant.win && kda > 3.0) rankEstimate += 1; // Strong win
+                        
+                        avgTeamRanks.push(rankEstimate);
+                    }
+                    
+                    // Small delay between individual match requests
+                    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+                    
+                } catch (error) {
+                    console.log(`⚠️ Failed to fetch match ${matchId}:`, error);
+                    // Continue with other matches
+                }
+            }
+        }
+
+        console.log(`✅ Analysis complete: ${rankedGamesAnalyzed} ranked games out of ${totalGamesAnalyzed} total games analyzed`)
+        console.log(`📊 Ranked record: ${wins}W ${losses}L`)
+        console.log(`🎯 Role distribution:`, roleCounts)
+
+        const rankedWinRate = rankedGamesAnalyzed > 0 ? Math.round((wins / rankedGamesAnalyzed) * 100) : 0;
+        
+        // Find the most played role in ranked games
+        let mainRole = 'Unknown';
+        if (Object.keys(roleCounts).length > 0) {
+            const topRole = Object.entries(roleCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+            // Convert role names to readable format
+            const roleMap: Record<string, string> = {
+                'TOP': 'Top',
+                'JUNGLE': 'Jungle', 
+                'MIDDLE': 'Mid',
+                'BOTTOM': 'ADC',
+                'UTILITY': 'Support'
+            };
+            mainRole = roleMap[topRole] || topRole.charAt(0).toUpperCase() + topRole.slice(1).toLowerCase();
+        }
+        
+        // Estimate rank based on performance
+        let estimatedRank = 'Unranked';
+        if (avgTeamRanks.length > 0) {
+            const avgRankScore = avgTeamRanks.reduce((a, b) => a + b, 0) / avgTeamRanks.length;
+            const avgKDA = kdaCount > 0 ? totalKDA / kdaCount : 0;
+            
+            console.log(`🎯 Rank estimation: avgScore=${avgRankScore.toFixed(2)}, avgKDA=${avgKDA.toFixed(2)}, winRate=${rankedWinRate}%`)
+            
+            // Rank estimation logic
+            if (avgRankScore >= 4 && avgKDA >= 2.5 && rankedWinRate >= 60) {
+                estimatedRank = 'Estimated: Diamond+';
+            } else if (avgRankScore >= 3 && avgKDA >= 2.0 && rankedWinRate >= 55) {
+                estimatedRank = 'Estimated: Platinum';
+            } else if (avgRankScore >= 2 && avgKDA >= 1.5 && rankedWinRate >= 50) {
+                estimatedRank = 'Estimated: Gold';
+            } else if (avgRankScore >= 1 && avgKDA >= 1.0) {
+                estimatedRank = 'Estimated: Silver';
+            } else {
+                estimatedRank = 'Estimated: Bronze-Iron';
+            }
+        }
+
+        const result = {
+            winRate: `${rankedWinRate}%`,
+            mainRole: mainRole,
+            gamesPlayed: rankedGamesAnalyzed,
+            wins: wins,
+            losses: losses,
+            totalMatches: totalGamesAnalyzed,
+            lastRankedMatch: lastRankedMatch,
+            estimatedRank: estimatedRank
+        };
+
+        console.log(`🎉 Final ranked stats: ${rankedWinRate}% WR, ${mainRole} main role, ${rankedGamesAnalyzed} ranked games, ${estimatedRank}`)
+
+        return result;
+    } catch (error) {
+        console.error('❌ Error analyzing match history:', error);
+        return {
+            winRate: 'Error',
+            mainRole: 'Error',
+            gamesPlayed: 0,
+            lastRankedMatch: 'Error occurred',
+            estimatedRank: 'Error'
+        };
+    }
+}
+
+// --- API Handlers ---
+
+/**
+ * GET /api/riot
+ * Verifies a Riot account exists and returns its PUUID.
+ * This is the first step in the account connection flow.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const gameName = searchParams.get('gameName')
+    const tagLine = searchParams.get('tagLine')
+    const region = searchParams.get('region') || 'americas'
+    
+    console.log(`🔍 Verifying Riot account: ${gameName}#${tagLine} in region: ${region}`)
+    
+    if (!gameName || !tagLine) {
+      return NextResponse.json({ error: 'Game name and tag line are required' }, { status: 400 });
+    }
+
+    if (!RIOT_API_KEY) {
+      return NextResponse.json({ error: 'Riot API key not configured on the server.' }, { status: 500 });
+    }
+
+    const routing = getRegionalRouting(region);
+    const accountData = await riotApiCall(
+      RIOT_ENDPOINTS.accountByNameTag(routing.account, gameName, tagLine)
+    );
+    
+    console.log('✅ Account verification successful:', accountData.gameName, accountData.tagLine)
+    
+    return NextResponse.json({
+      success: true,
+      puuid: accountData.puuid,
+      gameName: accountData.gameName,
+      tagLine: accountData.tagLine,
+      detectedRegion: region
+    });
+    
+  } catch (error) {
+    console.error('❌ Error verifying Riot account:', error)
+    const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
+
+/**
+ * UPDATED: The POST handler now calls our new match history function.
+ * Takes a PUUID and fetches detailed stats for specified games.
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { puuid, games, region = 'americas' } = await request.json();
+    
+    console.log(`📊 Fetching enhanced game stats for PUUID: ${puuid}, games: ${games}, region: ${region}`)
+    
+    if (!puuid || !Array.isArray(games)) {
+      return NextResponse.json({ error: 'PUUID and a "games" array are required' }, { status: 400 });
+    }
+
+    if (!RIOT_API_KEY) {
+      return NextResponse.json({ error: 'Riot API key not configured on the server.' }, { status: 500 });
+    }
+
+    const routing = getRegionalRouting(region);
+    const stats: Record<string, GameStats | null> = {};
+
+    // --- Handle Valorant ---
+    if (games.includes('valorant')) {
+      try {
+        console.log('🎮 Fetching Valorant data...')
+        
+        // Note: Development API keys often don't have access to Valorant APIs
+        // We'll provide a placeholder for now
+        console.log('⚠️ Valorant API access limited with development key')
+        stats.valorant = { 
+          rank: 'API Access Limited', 
+          winRate: 'Dev Key Restricted', 
+          lastPlayed: 'Valorant requires production key' 
+        };
+        
+        /* Commented out until production API key is available
+        const rankData = await riotApiCall(
+          RIOT_ENDPOINTS.valRankByPuuid(routing.valPlatform, puuid)
+        );
+        
+        console.log('🔍 Raw Valorant API response:', JSON.stringify(rankData, null, 2))
+        
+        const currentTierData = rankData.data?.find((d: any) => d.currenttier > 0);
+        console.log('🔍 Current tier data found:', currentTierData)
+
+        if (currentTierData) {
+          stats.valorant = {
+            rank: currentTierData.currenttierpatched,
+            rankIconUrl: `https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/${currentTierData.currenttier}/largeicon.png`,
+            rr: `${currentTierData.ranking_in_tier} RR`,
+            winRate: 'N/A',
+            lastPlayed: 'N/A',
+          };
+          console.log('✅ Valorant stats created successfully')
+        } else {
+          console.log('⚠️ No current tier data found - player appears unranked')
+          stats.valorant = { rank: 'Unranked', winRate: '0%', lastPlayed: 'N/A' };
+        }
+        */
+      } catch (error) {
+        console.error('❌ Could not fetch Valorant stats:', error);
+        stats.valorant = { rank: 'API Limited', winRate: '0%', lastPlayed: 'N/A' };
+      }
+    }
+    
+    // --- Handle League of Legends (Now with real stats!) ---
+    if (games.includes('league-of-legends')) {
+      try {
+        console.log('🎮 Fetching League of Legends data with match history analysis...')
+        
+        // First get the summoner data
+        const summonerData = await riotApiCall(
+          RIOT_ENDPOINTS.lolSummoner(routing.lolPlatform, puuid)
+        );
+
+        console.log('✅ Summoner data received:', JSON.stringify(summonerData, null, 2))
+        
+        // The summoner response should have an 'id' field, but let's check all available fields
+        console.log('🔍 Available summoner fields:', Object.keys(summonerData))
+        
+        // Try to find the summoner ID field (could be 'id', 'summonerId', or 'accountId')
+        const summonerId = summonerData.id || summonerData.summonerId || summonerData.accountId;
+        
+        if (!summonerId) {
+          console.error('❌ No summoner ID found in any expected field:', summonerData)
+          // Try to continue with match history only
+          console.log('⚠️ Attempting to fetch match history without rank data...')
+          
+          const historyStats = await getLolMatchHistoryStats(puuid, routing.lolRouting);
+          
+          stats['league-of-legends'] = { 
+            // Profile information from summoner data
+            profileIcon: `https://ddragon.leagueoflegends.com/cdn/14.16.1/img/profileicon/${summonerData.profileIconId}.png`,
+            summonerLevel: summonerData.summonerLevel,
+            // Performance data from match history
+            rank: historyStats.estimatedRank,
+            winRate: historyStats.winRate, 
+            mainRole: historyStats.mainRole,
+            gamesPlayed: historyStats.gamesPlayed,
+            // Added wins, losses, and totalMatches to the League stats when summoner ID is not found
+            wins: historyStats.wins,
+            losses: historyStats.losses,
+            totalMatches: historyStats.totalMatches,
+            lastPlayed: historyStats.lastRankedMatch
+          };
+          
+          console.log('✅ League of Legends stats created with match history only')
+        } else {
+          console.log('✅ Found summoner ID:', summonerId)
+          
+          // Get match history stats with better rate limiting
+          console.log('⏳ Waiting 1 second before fetching match history...')
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const historyStats = await getLolMatchHistoryStats(puuid, routing.lolRouting);
+          console.log('✅ History stats received:', JSON.stringify(historyStats, null, 2))
+          
+          // Get rank data with delay to avoid rate limiting
+          console.log('⏳ Waiting 1 second before fetching rank data...')
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const rankData: LoLQueueData[] = await riotApiCall(
+            RIOT_ENDPOINTS.lolRank(routing.lolPlatform, summonerId)
+          );
+          
+          console.log('✅ Raw rank data received:', JSON.stringify(rankData, null, 2))
+          
+          const soloQueue = rankData.find(q => q.queueType === 'RANKED_SOLO_5x5');
+          console.log('🔍 Solo queue data found:', soloQueue)
+          
+          if (soloQueue) {
+            stats['league-of-legends'] = {
+              // Profile information from summoner data
+              profileIcon: `https://ddragon.leagueoflegends.com/cdn/14.16.1/img/profileicon/${summonerData.profileIconId}.png`,
+              summonerLevel: summonerData.summonerLevel,
+              // Rank information from API
+              rank: `${soloQueue.tier} ${soloQueue.rank}`,
+              lp: `${soloQueue.leaguePoints} LP`,
+              // Performance data from match history analysis
+              winRate: historyStats.winRate,
+              mainRole: historyStats.mainRole,
+              gamesPlayed: historyStats.gamesPlayed,
+              wins: historyStats.wins,
+              losses: historyStats.losses,
+              totalMatches: historyStats.totalMatches,
+              lastPlayed: historyStats.lastRankedMatch,
+            };
+            console.log('✅ League of Legends enhanced stats created successfully')
+          } else {
+            console.log('⚠️ No solo queue data found - using estimated rank from match history...')
+            console.log('⚠️ Available queue types:', rankData.map(q => q.queueType))
+            stats['league-of-legends'] = { 
+              // Profile information from summoner data
+              profileIcon: `https://ddragon.leagueoflegends.com/cdn/14.16.1/img/profileicon/${summonerData.profileIconId}.png`,
+              summonerLevel: summonerData.summonerLevel,
+              // Performance data from match history
+              rank: historyStats.estimatedRank,
+              winRate: historyStats.winRate, 
+              mainRole: historyStats.mainRole,
+              gamesPlayed: historyStats.gamesPlayed,
+              wins: historyStats.wins,
+              losses: historyStats.losses,
+              totalMatches: historyStats.totalMatches,
+              lastPlayed: historyStats.lastRankedMatch
+            };
+            console.log('✅ League of Legends player using estimated rank from performance')
+          }
+        }
+      } catch (error) {
+        console.error('❌ Could not fetch League of Legends stats:', error);
+        stats['league-of-legends'] = { rank: 'Unranked', winRate: '0%', mainRole: 'Unknown', lastPlayed: 'N/A' };
+      }
+    }
+    
+    console.log('🎉 Enhanced stats generation completed')
+    
+    return NextResponse.json({ success: true, stats });
+    
+  } catch (error) {
+    console.error('❌ Error fetching enhanced game statistics:', error)
+    const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
