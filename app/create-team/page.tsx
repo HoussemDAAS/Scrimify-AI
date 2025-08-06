@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -17,7 +17,7 @@ import { gameConfigs } from '@/lib/game-configs'
 import TeamDetailsForm from '@/components/TeamDetailsForm'
 import MemberInvitations from '@/components/MemberInvitations'
 
-export default function CreateTeamPage() {
+function CreateTeamContent() {
   const { user } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
@@ -418,5 +418,22 @@ export default function CreateTeamPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CreateTeamPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl flex items-center justify-center mb-4 mx-auto animate-pulse">
+            <Brain className="w-8 h-8 text-white" />
+          </div>
+          <p className="text-white font-bold">Loading Battle Station...</p>
+        </div>
+      </div>
+    }>
+      <CreateTeamContent />
+    </Suspense>
   )
 }
