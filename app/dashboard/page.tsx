@@ -245,6 +245,26 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* Game Management Section */}
+        <div className="mb-8 md:mb-12 max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <SecondaryButton 
+              className="flex items-center gap-2 px-6 py-3"
+              onClick={() => router.push('/game-selection')}
+            >
+              <Plus className="w-4 h-4" />
+              ADD MORE GAMES
+            </SecondaryButton>
+            <SecondaryButton 
+              className="flex items-center gap-2 px-6 py-3"
+              onClick={() => router.push('/team-choice')}
+            >
+              <Users className="w-4 h-4" />
+              MANAGE TEAMS
+            </SecondaryButton>
+          </div>
+        </div>
+
         {/* Game Switcher */}
         <div className="mb-8 md:mb-12">
           <h2 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 text-center flex items-center justify-center gap-2">

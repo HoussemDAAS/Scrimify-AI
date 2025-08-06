@@ -216,15 +216,22 @@ export async function getTeamsForGame(game: string) {
   return data
 }
 
-export async function getUserTeamsForGame(userId: string, game: string) {
+export async function getUserTeamsForGame(clerkId: string, game: string) {
   try {
+    // First get the user's internal ID from their Clerk ID
+    const user = await getUserByClerkId(clerkId)
+    if (!user) {
+      console.log('User not found for clerk ID:', clerkId)
+      return []
+    }
+
     const { data, error } = await supabase
       .from('team_memberships')
       .select(`
         *,
         teams!inner(*)
       `)
-      .eq('user_id', userId)
+      .eq('user_id', user.id) // Use the internal UUID, not the Clerk ID
       .eq('teams.game', game)
     
     if (error) {
@@ -238,9 +245,16 @@ export async function getUserTeamsForGame(userId: string, game: string) {
   }
 }
 
-export async function getUserTeamsForAllGames(userId: string, games: string[]) {
+export async function getUserTeamsForAllGames(clerkId: string, games: string[]) {
   try {
     if (!games || games.length === 0) return []
+    
+    // First get the user's internal ID from their Clerk ID
+    const user = await getUserByClerkId(clerkId)
+    if (!user) {
+      console.log('User not found for clerk ID:', clerkId)
+      return []
+    }
     
     const { data, error } = await supabase
       .from('team_memberships')
@@ -248,7 +262,7 @@ export async function getUserTeamsForAllGames(userId: string, games: string[]) {
         *,
         teams!inner(*)
       `)
-      .eq('user_id', userId)
+      .eq('user_id', user.id) // Use the internal UUID, not the Clerk ID
       .in('teams.game', games)
     
     if (error) {
@@ -259,5 +273,30 @@ export async function getUserTeamsForAllGames(userId: string, games: string[]) {
   } catch (error) {
     console.error('Error in getUserTeamsForAllGames:', error)
     return []
+  }
+}
+
+// Helper function to check if user has teams
+export async function getUserTeamCount(clerkId: string) {
+  try {
+    // First get the user's internal ID
+    const { data: user } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single()
+    
+    if (!user) return 0
+    
+    // Count their team memberships
+    const { count, error } = await supabase
+      .from('team_memberships')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+    
+    if (error) return 0
+    return count || 0
+  } catch (error) {
+    return 0
   }
 }
