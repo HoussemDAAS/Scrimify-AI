@@ -4,6 +4,7 @@ import DashboardTopActions from './DashboardTopActions'
 import DashboardHero from './DashboardHero'
 import GameSelector from './GameSelector'
 import CurrentGameDisplay from './CurrentGameDisplay'
+import { AITeamMatcher } from './AITeamMatcher'
 import TeamActions from './TeamActions'
 import UserTeamsSection from './UserTeamsSection'
 import DashboardStats from './DashboardStats'
@@ -51,6 +52,11 @@ export default function DashboardContent({
         <CurrentGameDisplay 
           currentGame={currentGame}
           games={games}
+        />
+
+        <AITeamMatcher 
+          currentGame={currentGame}
+          userTeams={userTeams}
         />
 
         <TeamActions 

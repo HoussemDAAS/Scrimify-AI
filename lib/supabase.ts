@@ -1340,3 +1340,273 @@ export async function deleteTeam(teamId: string) {
     throw error
   }
 }
+
+// ========================================
+// AI TEAM MATCHING FUNCTIONS
+// ========================================
+
+interface TeamVector {
+  team_id: string
+  skill_level: number
+  region_weight: number
+  activity_score: number
+  playstyle_aggression: number
+  playstyle_teamwork: number
+  availability_hours: string
+}
+
+interface TeamWithVector extends Team {
+  skill_level: number
+  activity_score: number
+  playstyle_aggression: number
+}
+
+interface CompatibilityFactors {
+  skillMatch: number
+  regionMatch: number
+  activityMatch: number
+  playstyleMatch: number
+  skillGap: 'easier' | 'equal' | 'harder'
+}
+
+export interface AITeamRecommendation {
+  team: Team
+  score: number
+  reason: string
+  challengeType: 'scrim' | 'practice' | 'challenge' | 'coaching'
+  skillGap: 'easier' | 'equal' | 'harder'
+  compatibilityFactors: {
+    skillMatch: number
+    regionMatch: number
+    activityMatch: number
+    playstyleMatch: number
+  }
+}
+
+// Get AI team recommendations for a user
+export async function getAITeamRecommendations(
+  clerkId: string, 
+  game: string, 
+  limit: number = 5
+): Promise<AITeamRecommendation[]> {
+  try {
+    const user = await getUserByClerkId(clerkId)
+    if (!user) throw new Error('User not found')
+
+    // Get user's teams for this game
+    const userTeams = await getUserTeamsForGame(clerkId, game)
+    if (userTeams.length === 0) {
+      // If user has no teams, recommend popular active teams
+      return await getPopularTeamsForGame(game, limit)
+    }
+
+    const userTeam = userTeams[0].teams // Use first team as reference
+
+    // Get team vector for user's team
+    const { data: userVector } = await supabase
+      .from('team_vectors')
+      .select('*')
+      .eq('team_id', userTeam.id)
+      .single()
+
+    if (!userVector) {
+      return await getPopularTeamsForGame(game, limit)
+    }
+
+    // Find teams with similar characteristics
+    const { data: candidateTeams, error } = await supabase
+      .from('teams')
+      .select(`
+        *,
+        team_vectors!inner(skill_level, activity_score, playstyle_aggression)
+      `)
+      .eq('game', game)
+      .neq('id', userTeam.id)
+      .gte('team_vectors.skill_level', userVector.skill_level - 2)
+      .lte('team_vectors.skill_level', userVector.skill_level + 2)
+      .lt('current_members', 'max_members')
+      .limit(limit * 2)
+
+    if (error) {
+      console.error('Error finding candidate teams:', error)
+      return await getPopularTeamsForGame(game, limit)
+    }
+
+    // Generate recommendations with AI scoring
+    const recommendations: AITeamRecommendation[] = []
+
+    for (const candidateTeam of candidateTeams.slice(0, limit)) {
+      const recommendation = await generateTeamRecommendation(
+        userTeam, 
+        userVector, 
+        candidateTeam
+      )
+      recommendations.push(recommendation)
+    }
+
+    // Sort by score and return top recommendations
+    return recommendations
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+
+  } catch (error) {
+    console.error('Error in getAITeamRecommendations:', error)
+    throw error
+  }
+}
+
+// Generate AI recommendation for a specific team matchup
+async function generateTeamRecommendation(
+  userTeam: Team,
+  userVector: TeamVector,
+  targetTeam: TeamWithVector
+): Promise<AITeamRecommendation> {
+  // Calculate compatibility factors
+  const skillDiff = Math.abs(userVector.skill_level - targetTeam.skill_level)
+  const skillMatch = Math.max(0, 100 - skillDiff * 10) // 0-100 scale
+  
+  const regionMatch = userTeam.region === targetTeam.region ? 100 : 50
+  
+  const activityMatch = Math.min(100, 
+    Math.max(0, 100 - Math.abs(userVector.activity_score - targetTeam.activity_score) * 10)
+  )
+  
+  const playstyleMatch = Math.min(100,
+    Math.max(0, 100 - Math.abs(userVector.playstyle_aggression - targetTeam.playstyle_aggression) * 5)
+  )
+
+  // Calculate overall compatibility score
+  const compatibilityScore = (
+    skillMatch * 0.4 + 
+    regionMatch * 0.3 + 
+    activityMatch * 0.2 + 
+    playstyleMatch * 0.1
+  )
+
+  // Determine challenge type and skill gap
+  const skillGap: 'easier' | 'equal' | 'harder' = 
+    skillDiff < 0.5 ? 'equal' : 
+    targetTeam.skill_level > userVector.skill_level ? 'harder' : 'easier'
+
+  const challengeType: 'scrim' | 'practice' | 'challenge' | 'coaching' =
+    skillGap === 'equal' ? 'scrim' :
+    skillGap === 'harder' ? 'challenge' : 'practice'
+
+  // Generate AI reasoning
+  const reason = generateAIReason(userTeam, targetTeam, {
+    skillMatch, regionMatch, activityMatch, playstyleMatch, skillGap
+  })
+
+  return {
+    team: targetTeam,
+    score: Math.round(compatibilityScore),
+    reason,
+    challengeType,
+    skillGap,
+    compatibilityFactors: {
+      skillMatch: Math.round(skillMatch),
+      regionMatch: Math.round(regionMatch),
+      activityMatch: Math.round(activityMatch),
+      playstyleMatch: Math.round(playstyleMatch)
+    }
+  }
+}
+
+// Generate AI reasoning for team recommendation
+function generateAIReason(
+  userTeam: Team, 
+  targetTeam: TeamWithVector, 
+  factors: CompatibilityFactors
+): string {
+  const reasons = []
+
+  if (factors.skillMatch > 80) {
+    reasons.push("Perfect skill level match")
+  } else if (factors.skillMatch > 60) {
+    reasons.push("Good skill compatibility")
+  }
+
+  if (factors.regionMatch === 100) {
+    reasons.push("Same region (low ping)")
+  }
+
+  if (factors.skillGap === 'harder') {
+    reasons.push("Great for improvement")
+  } else if (factors.skillGap === 'equal') {
+    reasons.push("Balanced competition")
+  }
+
+  if (factors.activityMatch > 70) {
+    reasons.push("Similar activity levels")
+  }
+
+  if (targetTeam.current_members < targetTeam.max_members) {
+    reasons.push("Currently recruiting")
+  }
+
+  return reasons.slice(0, 3).join(" • ") || "Recommended match"
+}
+
+// Fallback: Get popular teams for users without teams
+async function getPopularTeamsForGame(game: string, limit: number): Promise<AITeamRecommendation[]> {
+  try {
+    const { data: teams, error } = await supabase
+      .from('teams')
+      .select(`
+        *,
+        team_vectors(skill_level, activity_score)
+      `)
+      .eq('game', game)
+      .filter('current_members', 'lt', 'max_members')
+      .order('current_members', { ascending: false })
+      .limit(limit)
+
+    if (error) throw error
+
+    return (teams || []).map((team, index) => ({
+      team,
+      score: 85 - index * 5, // Decreasing score
+      reason: "Popular active team • Looking for members",
+      challengeType: 'scrim' as const,
+      skillGap: 'equal' as const,
+      compatibilityFactors: {
+        skillMatch: 75,
+        regionMatch: 50,
+        activityMatch: 80,
+        playstyleMatch: 60
+      }
+    }))
+  } catch (error) {
+    console.error('Error getting popular teams:', error)
+    return []
+  }
+}
+
+// Track AI recommendation interaction
+export async function trackAIRecommendation(
+  clerkId: string,
+  teamId: string,
+  score: number,
+  reason: string,
+  type: string,
+  action: 'clicked' | 'challenged' | 'ignored'
+): Promise<void> {
+  try {
+    const user = await getUserByClerkId(clerkId)
+    if (!user) return
+
+    await supabase
+      .from('ai_recommendations')
+      .insert({
+        user_id: user.id,
+        recommended_team_id: teamId,
+        score,
+        reason,
+        recommendation_type: type,
+        clicked: action === 'clicked' || action === 'challenged',
+        result: action
+      })
+  } catch (error) {
+    console.error('Error tracking AI recommendation:', error)
+  }
+}
