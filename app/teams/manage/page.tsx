@@ -63,6 +63,15 @@ interface Team {
   practice_schedule: string
   logo_url?: string
   created_at: string
+  // LoL-specific fields
+  playstyle?: string
+  primary_goal?: string
+  communication_style?: string
+  preferred_roles?: string[]
+  wins?: number
+  losses?: number
+  total_matches?: number
+  win_rate?: number
 }
 
 export default function TeamManagementPage() {

@@ -15,9 +15,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { 
-  ArrowLeft, Brain, Target, Plus, Crown, Flame, Users, Shield, Upload, LogOut, Gamepad2
+  ArrowLeft, Brain, Target, Plus, Crown, Flame, Users, Upload, LogOut, Gamepad2
 } from 'lucide-react'
-import { getUserByClerkId, createTeam, canUserCreateTeamForGame, uploadTeamLogo } from '@/lib/supabase'
+import { getUserByClerkId, createTeam } from '@/lib/supabase'
 import { gameConfigs } from '@/lib/game-configs'
 
 interface TeamFormData {
@@ -29,6 +29,11 @@ interface TeamFormData {
   max_members: number
   practice_schedule: string
   logo_file?: File
+  // LoL-specific fields
+  playstyle: string // aggressive, defensive, balanced
+  primary_goal: string // casual, competitive, professional
+  communication_style: string // voice, text, both
+  preferred_roles: string[] // top, jungle, mid, adc, support
 }
 
 function CreateTeamContent() {
@@ -42,16 +47,20 @@ function CreateTeamContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [canCreateTeam, setCanCreateTeam] = useState(true)
   
   const [formData, setFormData] = useState<TeamFormData>({
     name: '',
     description: '',
-    game: gameParam || 'valorant',
+    game: gameParam || 'league-of-legends',
     region: '',
     rank_requirement: '',
     max_members: 5,
-    practice_schedule: ''
+    practice_schedule: '',
+    // LoL-specific fields
+    playstyle: '',
+    primary_goal: '',
+    communication_style: '',
+    preferred_roles: []
   })
 
   const regions = ['NA', 'EU', 'ASIA', 'OCE', 'SA']
@@ -96,23 +105,24 @@ function CreateTeamContent() {
     checkUser()
   }, [user, router, gameParam])
 
-  useEffect(() => {
-    const checkTeamCreationLimit = async () => {
-      if (!user || !formData.game) return
-      
-      try {
-        const canCreate = await canUserCreateTeamForGame(user.id, formData.game)
-        setCanCreateTeam(canCreate)
-      } catch (error) {
-        console.error('Error checking team creation limit:', error)
-        setCanCreateTeam(true)
-      }
-    }
+  // Removed team creation limit check - users can create unlimited teams
+  // useEffect(() => {
+  //   const checkTeamCreationLimit = async () => {
+  //     if (!user || !formData.game) return
+  //     
+  //     try {
+  //       const canCreate = await canUserCreateTeamForGame(user.id, formData.game)
+  //       setCanCreateTeam(canCreate)
+  //     } catch (error) {
+  //       console.error('Error checking team creation limit:', error)
+  //       setCanCreateTeam(true)
+  //     }
+  //   }
 
-    checkTeamCreationLimit()
-  }, [user, formData.game])
+  //   checkTeamCreationLimit()
+  // }, [user, formData.game])
 
-  const handleInputChange = (field: keyof TeamFormData, value: string | number | File) => {
+  const handleInputChange = (field: keyof TeamFormData, value: string | number | File | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
@@ -158,19 +168,15 @@ function CreateTeamContent() {
       return
     }
 
-    if (!canCreateTeam) {
-      alert('You have reached the maximum number of teams for this game (3 teams)')
-      return
-    }
-
     setIsCreating(true)
     
     try {
-      let logoUrl = ''
+      // Logo upload functionality to be implemented later
+      const logoUrl = ''
       
-      if (formData.logo_file) {
-        logoUrl = await uploadTeamLogo(formData.logo_file, `temp-${Date.now()}`)
-      }
+      // if (formData.logo_file) {
+      //   logoUrl = await uploadTeamLogo(formData.logo_file, `temp-${Date.now()}`)
+      // }
 
       const teamData = {
         name: formData.name.trim(),
@@ -181,7 +187,12 @@ function CreateTeamContent() {
         max_members: formData.max_members,
         practice_schedule: formData.practice_schedule || undefined,
         logo_url: logoUrl || undefined,
-        owner_clerk_id: user.id
+        owner_clerk_id: user.id,
+        // LoL-specific fields
+        playstyle: formData.playstyle || undefined,
+        primary_goal: formData.primary_goal || undefined,
+        communication_style: formData.communication_style || undefined,
+        preferred_roles: formData.preferred_roles.length > 0 ? formData.preferred_roles : undefined
       }
 
       const newTeam = await createTeam(teamData)
@@ -462,6 +473,83 @@ function CreateTeamContent() {
                   />
                 </div>
 
+                {/* LoL-Specific Fields */}
+                {formData.game === 'league-of-legends' && (
+                  <>
+                    <div>
+                      <label className="text-gray-300 text-sm font-bold mb-2 block">TEAM PLAYSTYLE</label>
+                      <Select value={formData.playstyle} onValueChange={(value) => handleInputChange('playstyle', value)}>
+                        <SelectTrigger className="bg-gray-800/50 border-red-500/30 text-white">
+                          <SelectValue placeholder="Select your team's playstyle" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="aggressive">Aggressive - Early fights, fast pace</SelectItem>
+                          <SelectItem value="defensive">Defensive - Safe plays, late game focus</SelectItem>
+                          <SelectItem value="balanced">Balanced - Adaptable strategy</SelectItem>
+                          <SelectItem value="objective-focused">Objective Focused - Dragons, Baron priority</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-gray-300 text-sm font-bold mb-2 block">PRIMARY GOAL</label>
+                      <Select value={formData.primary_goal} onValueChange={(value) => handleInputChange('primary_goal', value)}>
+                        <SelectTrigger className="bg-gray-800/50 border-red-500/30 text-white">
+                          <SelectValue placeholder="What's your team's main goal?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="casual">Casual - Fun games with friends</SelectItem>
+                          <SelectItem value="competitive">Competitive - Ranked improvement</SelectItem>
+                          <SelectItem value="tournament">Tournament - Organized competitions</SelectItem>
+                          <SelectItem value="professional">Professional - Esports career</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-gray-300 text-sm font-bold mb-2 block">COMMUNICATION STYLE</label>
+                      <Select value={formData.communication_style} onValueChange={(value) => handleInputChange('communication_style', value)}>
+                        <SelectTrigger className="bg-gray-800/50 border-red-500/30 text-white">
+                          <SelectValue placeholder="How does your team communicate?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="voice">Voice Chat Only</SelectItem>
+                          <SelectItem value="text">Text Chat Only</SelectItem>
+                          <SelectItem value="both">Voice + Text</SelectItem>
+                          <SelectItem value="flexible">Flexible</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-gray-300 text-sm font-bold mb-2 block">PREFERRED ROLES (OPTIONAL)</label>
+                      <div className="grid grid-cols-5 gap-2">
+                        {['Top', 'Jungle', 'Mid', 'ADC', 'Support'].map((role) => (
+                          <button
+                            key={role}
+                            type="button"
+                            onClick={() => {
+                              const currentRoles = formData.preferred_roles
+                              const newRoles = currentRoles.includes(role.toLowerCase())
+                                ? currentRoles.filter(r => r !== role.toLowerCase())
+                                : [...currentRoles, role.toLowerCase()]
+                              handleInputChange('preferred_roles', newRoles)
+                            }}
+                            className={`p-2 rounded-lg text-xs font-bold transition-colors ${
+                              formData.preferred_roles.includes(role.toLowerCase())
+                                ? 'bg-red-600 text-white'
+                                : 'bg-gray-800/50 border border-red-500/30 text-gray-300 hover:bg-red-500/20'
+                            }`}
+                          >
+                            {role}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-gray-500 text-xs mt-1">Select roles your team focuses on</p>
+                    </div>
+                  </>
+                )}
+
                 <div>
                   <label className="text-gray-300 text-sm font-bold mb-2 block">TEAM LOGO (OPTIONAL)</label>
                   <div className="space-y-3">
@@ -496,19 +584,6 @@ function CreateTeamContent() {
                 </div>
               </div>
 
-              {!canCreateTeam && (
-                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-red-400">
-                    <Shield className="w-5 h-5" />
-                    <span className="font-bold">Team Limit Reached</span>
-                  </div>
-                  <p className="text-red-300 text-sm mt-1">
-                    You have reached the maximum number of teams for {currentGameConfig.name} (3 teams). 
-                    Consider managing your existing teams or contact support for increased limits.
-                  </p>
-                </div>
-              )}
-
               <div className="flex gap-4 pt-4">
                 <SecondaryButton 
                   type="button"
@@ -520,7 +595,7 @@ function CreateTeamContent() {
                 
                 <PrimaryButton 
                   type="submit" 
-                  disabled={isCreating || !canCreateTeam}
+                  disabled={isCreating}
                   className="flex-1"
                 >
                   {isCreating ? (

@@ -18,6 +18,14 @@ interface AITeamRecommendation {
     current_members: number
     max_members: number
     rank_requirement?: string
+    practice_schedule?: string
+    playstyle?: string
+    primary_goal?: string
+    communication_style?: string
+    preferred_roles?: string[]
+    wins?: number
+    losses?: number
+    win_rate?: number
     logo_url?: string
   }
   score: number
@@ -58,7 +66,16 @@ async function getAITeamRecommendations(
     // Get all available teams for this game
     const { data: availableTeams, error } = await supabase
       .from('teams')
-      .select('*')
+      .select(`
+        *,
+        playstyle,
+        primary_goal,
+        communication_style,
+        preferred_roles,
+        wins,
+        losses,
+        win_rate
+      `)
       .eq('game', game)
       .order('current_members', { ascending: false })
       .limit(limit * 3) // Get more candidates
@@ -151,33 +168,48 @@ async function analyzeTeamCompatibility(
       max_members: team.max_members
     }))
 
-    const prompt = `As an expert esports analyst, analyze team compatibility for ${game}.
+    const prompt = `As an expert League of Legends esports analyst, analyze team compatibility for competitive play.
 
 ${myTeam ? `My Team Profile:
 Name: ${myTeamData.name}
 Description: ${myTeamData.description}
 Region: ${myTeamData.region}
-Rank: ${myTeamData.rank_requirement}
-Schedule: ${myTeamData.practice_schedule}
+Rank Requirement: ${myTeamData.rank_requirement}
+Practice Schedule: ${myTeamData.practice_schedule}
 Members: ${myTeamData.current_members}/${myTeamData.max_members}
-Game Data: ${JSON.stringify(myTeamData.game_specific_data)}
+Playstyle: ${myTeamData['playstyle'] || 'Not specified'}
+Primary Goal: ${myTeamData['primary_goal'] || 'Not specified'}
+Communication: ${myTeamData['communication_style'] || 'Not specified'}
+Preferred Roles: ${Array.isArray(myTeamData['preferred_roles']) ? myTeamData['preferred_roles'].join(', ') : 'Not specified'}
+Match Record: ${myTeamData['wins'] || 0}W - ${myTeamData['losses'] || 0}L (${myTeamData['win_rate'] || 0}% win rate)
 
-Find compatible teams for scrimmages, practice matches, or tournaments.` : 'Find the best teams for a new player to join or compete against.'}
+Find compatible teams for scrimmages, practice matches, or tournaments based on skill level, playstyle compatibility, and team goals.` : 'Find the best teams for a new player to join or compete against.'}
 
 Candidate Teams:
 ${candidateData.map((team, i) => `
 ${i + 1}. ${team.name}
    Description: ${team.description}
    Region: ${team.region}
-   Rank: ${team.rank_requirement}
-   Schedule: ${team.practice_schedule}
+   Rank Requirement: ${team.rank_requirement}
+   Practice Schedule: ${team.practice_schedule}
    Members: ${team.current_members}/${team.max_members}
-   Game Data: ${JSON.stringify(team.game_specific_data)}
+   Playstyle: ${team['playstyle'] || 'Not specified'}
+   Primary Goal: ${team['primary_goal'] || 'Not specified'}
+   Communication: ${team['communication_style'] || 'Not specified'}
+   Preferred Roles: ${Array.isArray(team['preferred_roles']) ? team['preferred_roles'].join(', ') : 'Not specified'}
+   Match Record: ${team['wins'] || 0}W - ${team['losses'] || 0}L (${team['win_rate'] || 0}% win rate)
 `).join('')}
+
+Analyze each team considering:
+- Skill level compatibility (rank requirements, win rates)
+- Playstyle synergy (aggressive vs defensive, objective focus)
+- Communication preferences and team goals
+- Schedule compatibility and regional proximity
+- Role coverage and team composition needs
 
 For each team, provide:
 1. Compatibility score (0-100)
-2. Detailed reason for recommendation
+2. Detailed reason focusing on LoL-specific factors
 3. Challenge type: "scrim", "practice", "challenge", or "coaching"
 4. Skill gap: "easier", "equal", or "harder"
 5. Compatibility factors (0-100 each): skillMatch, regionMatch, activityMatch, playstyleMatch
