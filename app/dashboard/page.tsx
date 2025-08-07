@@ -41,44 +41,13 @@ export default function DashboardPage() {
 
   const games = [
     { 
-      name: "VALORANT", 
-      players: "2.1M", 
-      rank: "#1", 
-      color: "from-red-600 to-red-800",
-      logo: "/logos/valorant-logo.png",
-      id: "valorant"
-    },
-    { 
       name: "LEAGUE OF LEGENDS", 
       players: "1.8M", 
-      rank: "#2", 
+      rank: "#1", 
       color: "from-red-500 to-red-700",
       logo: "/logos/lol-logo.png",
-      id: "league-of-legends"
-    },
-    { 
-      name: "COUNTER-STRIKE 2", 
-      players: "1.5M", 
-      rank: "#3", 
-      color: "from-red-600 to-red-900",
-      logo: "/logos/cs2-logo.png",
-      id: "counter-strike-2"
-    },
-    { 
-      name: "OVERWATCH 2", 
-      players: "900K", 
-      rank: "#4", 
-      color: "from-red-400 to-red-600",
-      logo: "/logos/overwatch-logo.png",
-      id: "overwatch-2"
-    },
-    { 
-      name: "ROCKET LEAGUE", 
-      players: "750K", 
-      rank: "#5", 
-      color: "from-red-700 to-red-900",
-      logo: "/logos/rocket-league-logo.png",
-      id: "rocket-league"
+      id: "league-of-legends",
+      available: true
     }
   ]
 
@@ -94,11 +63,21 @@ export default function DashboardPage() {
           return
         }
         
-        const games = Array.isArray(existingUser.selected_game) 
+        const allGames = Array.isArray(existingUser.selected_game) 
           ? existingUser.selected_game 
           : [existingUser.selected_game]
-        setSelectedGames(games)
-        setCurrentGame(games[0]) // Set first game as default
+        
+        // Filter to only show League of Legends
+        const filteredGames = allGames.filter(game => game === 'league-of-legends')
+        
+        // If user has no League of Legends selected, redirect to game selection
+        if (filteredGames.length === 0) {
+          router.push('/game-selection')
+          return
+        }
+        
+        setSelectedGames(filteredGames)
+        setCurrentGame('league-of-legends') // Always set to League of Legends
         
         // Set enhanced profile data
         setUserProfile({
@@ -106,14 +85,14 @@ export default function DashboardPage() {
           avatar_url: existingUser.avatar_url || user.imageUrl,
           bio: existingUser.bio || '',
           competitive_level: existingUser.competitive_level || 'casual',
-          selected_game: games,
+          selected_game: filteredGames,
           riot_account_verified: existingUser.riot_account_verified || false,
           riot_username: existingUser.riot_username || '',
           looking_for_team: existingUser.looking_for_team !== false
         })
         
         // Load LoL game stats if available
-        if (games.includes('league-of-legends')) {
+        if (filteredGames.includes('league-of-legends')) {
           try {
             const lolStats = await getUserGameStatistics(existingUser.id, 'league-of-legends')
             if (lolStats) {

@@ -68,17 +68,23 @@ function CreateTeamContent() {
           return
         }
         
-        const games = Array.isArray(existingUser.selected_game) 
+        const allGames = Array.isArray(existingUser.selected_game) 
           ? existingUser.selected_game 
           : [existingUser.selected_game]
         
-        setSelectedGames(games)
+        // Filter to only show League of Legends
+        const filteredGames = allGames.filter(game => game === 'league-of-legends')
         
-        if (gameParam && games.includes(gameParam)) {
-          setFormData(prev => ({ ...prev, game: gameParam }))
-        } else {
-          setFormData(prev => ({ ...prev, game: games[0] }))
+        // If user has no League of Legends selected, redirect to game selection
+        if (filteredGames.length === 0) {
+          router.push('/game-selection')
+          return
         }
+        
+        setSelectedGames(filteredGames)
+        
+        // Always set to League of Legends
+        setFormData(prev => ({ ...prev, game: 'league-of-legends' }))
         
         setIsLoading(false)
       } catch (error) {

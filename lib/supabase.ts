@@ -1455,7 +1455,51 @@ export async function getAITeamRecommendations(
   }
 }
 
-// Generate AI recommendation for a specific team matchup
+// Generate simple AI recommendation for a specific team matchup
+async function generateSimpleTeamRecommendation(
+  userTeam: Team,
+  targetTeam: Team
+): Promise<AITeamRecommendation> {
+  // Simple compatibility scoring
+  const regionMatch = userTeam.region === targetTeam.region ? 100 : 50
+  const memberRatio = (targetTeam.current_members / targetTeam.max_members) * 100
+  const availabilityScore = Math.max(0, 100 - memberRatio) // More available spots = higher score
+  
+  // Simple rank matching (if available)
+  const rankMatch = userTeam.rank_requirement === targetTeam.rank_requirement ? 100 : 70
+  
+  // Calculate overall compatibility score
+  const compatibilityScore = (
+    regionMatch * 0.4 + 
+    availabilityScore * 0.3 + 
+    rankMatch * 0.3
+  )
+
+  // Simple skill gap determination
+  const skillGap: 'easier' | 'equal' | 'harder' = 'equal' // Default for now
+  const challengeType: 'scrim' | 'practice' | 'challenge' | 'coaching' = 'scrim'
+
+  // Generate simple reasoning
+  const reasons = []
+  if (regionMatch === 100) reasons.push("Same region")
+  if (availabilityScore > 50) reasons.push("Has open spots")
+  if (rankMatch === 100) reasons.push("Matching skill level")
+  if (reasons.length === 0) reasons.push("Good potential match")
+
+  return {
+    team: targetTeam,
+    score: Math.round(compatibilityScore),
+    reason: reasons.join(" • "),
+    challengeType,
+    skillGap,
+    compatibilityFactors: {
+      skillMatch: Math.round(rankMatch),
+      regionMatch: Math.round(regionMatch),
+      activityMatch: Math.round(availabilityScore),
+      playstyleMatch: 75 // Default
+    }
+  }
+}
 async function generateTeamRecommendation(
   userTeam: Team,
   userVector: TeamVector,

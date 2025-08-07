@@ -18,7 +18,8 @@ import {
   Crown,
   Flame,
   Plus,
-  Check
+  Check,
+  Clock
 } from 'lucide-react'
 import { getUserByClerkId, createUser, addUserGame, removeUserGame } from '@/lib/supabase'
 
@@ -31,44 +32,49 @@ export default function GameSelectionPage() {
 
   const games = [
     { 
-      name: "VALORANT", 
-      players: "2.1M", 
-      rank: "#1", 
-      color: "from-red-600 to-red-800",
-      logo: "/logos/valorant-logo.png",
-      id: "valorant"
-    },
-    { 
       name: "LEAGUE OF LEGENDS", 
       players: "1.8M", 
-      rank: "#2", 
+      rank: "#1", 
       color: "from-red-500 to-red-700",
       logo: "/logos/lol-logo.png",
-      id: "league-of-legends"
+      id: "league-of-legends",
+      available: true
+    },
+    { 
+      name: "VALORANT", 
+      players: "2.1M", 
+      rank: "#2", 
+      color: "from-gray-600 to-gray-800",
+      logo: "/logos/valorant-logo.png",
+      id: "valorant",
+      available: false
     },
     { 
       name: "COUNTER-STRIKE 2", 
       players: "1.5M", 
       rank: "#3", 
-      color: "from-red-600 to-red-900",
+      color: "from-gray-600 to-gray-900",
       logo: "/logos/cs2-logo.png",
-      id: "counter-strike-2"
+      id: "counter-strike-2",
+      available: false
     },
     { 
       name: "OVERWATCH 2", 
       players: "900K", 
       rank: "#4", 
-      color: "from-red-400 to-red-600",
+      color: "from-gray-400 to-gray-600",
       logo: "/logos/overwatch-logo.png",
-      id: "overwatch-2"
+      id: "overwatch-2",
+      available: false
     },
     { 
       name: "ROCKET LEAGUE", 
       players: "750K", 
       rank: "#5", 
-      color: "from-red-700 to-red-900",
+      color: "from-gray-700 to-gray-900",
       logo: "/logos/rocket-league-logo.png",
-      id: "rocket-league"
+      id: "rocket-league",
+      available: false
     }
   ]
 
@@ -114,6 +120,10 @@ export default function GameSelectionPage() {
 
   const handleGameToggle = async (gameId: string) => {
     if (!user) return
+    
+    // Check if the game is available
+    const game = games.find(g => g.id === gameId)
+    if (!game?.available) return
     
     const isSelected = selectedGames.includes(gameId)
     
@@ -238,10 +248,12 @@ export default function GameSelectionPage() {
                 }`}></div>
                 
                 <Card 
-                  className={`relative bg-gradient-to-br from-gray-900 to-black border-2 transition-all duration-500 cursor-pointer h-full group-hover:scale-105 ${
-                    isSelected
-                      ? 'border-green-500 bg-green-500/10' 
-                      : 'border-red-500/30 hover:border-red-500/80'
+                  className={`relative bg-gradient-to-br from-gray-900 to-black border-2 transition-all duration-500 h-full group-hover:scale-105 ${
+                    !game.available 
+                      ? 'cursor-not-allowed opacity-60 border-gray-600/50' 
+                      : isSelected
+                        ? 'cursor-pointer border-green-500 bg-green-500/10' 
+                        : 'cursor-pointer border-red-500/30 hover:border-red-500/80'
                   }`}
                   onClick={() => handleGameToggle(game.id)}
                 >
@@ -249,29 +261,49 @@ export default function GameSelectionPage() {
                     {/* Game Logo/Icon - Responsive */}
                     <div className="relative mx-auto mb-4 md:mb-6">
                       <div className={`absolute inset-0 w-12 h-12 md:w-16 md:h-16 border-2 rounded-2xl animate-spin-slow transition-colors duration-500 ${
-                        isSelected ? 'border-green-500/80' : 'border-red-500/30 group-hover:border-red-500/80'
+                        !game.available 
+                          ? 'border-gray-600/50' 
+                          : isSelected 
+                            ? 'border-green-500/80' 
+                            : 'border-red-500/30 group-hover:border-red-500/80'
                       }`}></div>
-                      <div className={`relative w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden`}>
+                      <div className={`relative w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 overflow-hidden ${
+                        !game.available ? 'opacity-70' : ''
+                      }`}>
                         <Image 
                           src={game.logo} 
                           alt={game.name}
                           width={32}
                           height={32}
-                          className="md:w-10 md:h-10 object-contain filter brightness-0 invert"
+                          className={`md:w-10 md:h-10 object-contain filter brightness-0 invert ${
+                            !game.available ? 'opacity-50' : ''
+                          }`}
                         />
                         <div className={`absolute inset-0 border-2 rounded-2xl animate-ping opacity-0 group-hover:opacity-75 ${
-                          isSelected ? 'border-green-400/50' : 'border-red-400/50'
+                          !game.available 
+                            ? 'border-gray-400/30' 
+                            : isSelected 
+                              ? 'border-green-400/50' 
+                              : 'border-red-400/50'
                         }`}></div>
                       </div>
                     </div>
                     
-                    {/* Rank Badge + Selection Status */}
-                    <div className="flex justify-center items-center gap-2 mb-3 md:mb-4">
-                      <Badge className="bg-red-600 text-white font-bold px-2 py-1 md:px-3 md:py-1 text-xs">
+                    {/* Rank Badge + Selection Status + Coming Soon */}
+                    <div className="flex justify-center items-center gap-2 mb-3 md:mb-4 flex-wrap">
+                      <Badge className={`font-bold px-2 py-1 md:px-3 md:py-1 text-xs ${
+                        game.available ? 'bg-red-600 text-white' : 'bg-gray-600 text-gray-300'
+                      }`}>
                         <Crown className="mr-1 h-2 w-2 md:h-3 md:w-3" />
                         {game.rank}
                       </Badge>
-                      {isSelected && (
+                      {!game.available && (
+                        <Badge className="bg-orange-600 text-white font-bold px-2 py-1 text-xs animate-pulse">
+                          <Clock className="mr-1 h-2 w-2 md:h-3 md:w-3" />
+                          COMING SOON
+                        </Badge>
+                      )}
+                      {isSelected && game.available && (
                         <Badge className="bg-green-600 text-white font-bold px-2 py-1 text-xs">
                           <Check className="h-2 w-2 md:h-3 md:w-3" />
                         </Badge>
@@ -279,7 +311,11 @@ export default function GameSelectionPage() {
                     </div>
                     
                     <CardTitle className={`text-lg md:text-xl lg:text-2xl font-black mb-2 md:mb-3 transition-colors duration-300 ${
-                      isSelected ? 'text-green-100' : 'text-white group-hover:text-red-100'
+                      !game.available 
+                        ? 'text-gray-500' 
+                        : isSelected 
+                          ? 'text-green-100' 
+                          : 'text-white group-hover:text-red-100'
                     }`}>
                       {game.name}
                     </CardTitle>
@@ -287,18 +323,29 @@ export default function GameSelectionPage() {
                     {/* Stats - Responsive */}
                     <div className="flex justify-center items-center gap-2 md:gap-4 mb-3 md:mb-4">
                       <div className="flex items-center gap-1 md:gap-2">
-                        <Users className="w-3 h-3 md:w-4 md:h-4 text-red-500" />
-                        <span className="text-gray-300 font-bold text-xs md:text-sm">{game.players}</span>
+                        <Users className={`w-3 h-3 md:w-4 md:h-4 ${game.available ? 'text-red-500' : 'text-gray-600'}`} />
+                        <span className={`font-bold text-xs md:text-sm ${game.available ? 'text-gray-300' : 'text-gray-600'}`}>{game.players}</span>
                       </div>
-                      <div className="w-1 h-3 md:h-4 bg-red-500/30"></div>
+                      <div className={`w-1 h-3 md:h-4 ${game.available ? 'bg-red-500/30' : 'bg-gray-600/30'}`}></div>
                       <div className="flex items-center gap-1 md:gap-2">
-                        <Flame className="w-3 h-3 md:w-4 md:h-4 text-red-500" />
-                        <span className="text-gray-300 font-bold text-xs md:text-sm">ACTIVE</span>
+                        <Flame className={`w-3 h-3 md:w-4 md:h-4 ${game.available ? 'text-red-500' : 'text-gray-600'}`} />
+                        <span className={`font-bold text-xs md:text-sm ${game.available ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {game.available ? 'ACTIVE' : 'SOON'}
+                        </span>
                       </div>
                     </div>
 
                     {/* Selection Button */}
-                    {isSelected ? (
+                    {!game.available ? (
+                      <SecondaryButton 
+                        size="sm"
+                        disabled
+                        className="w-full text-xs md:text-sm border-gray-600 text-gray-500 cursor-not-allowed"
+                      >
+                        <Clock className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                        COMING SOON
+                      </SecondaryButton>
+                    ) : isSelected ? (
                       <SecondaryButton 
                         size="sm"
                         className="w-full text-xs md:text-sm border-green-500 text-green-500 hover:bg-green-500"
@@ -319,7 +366,11 @@ export default function GameSelectionPage() {
                   
                   {/* Bottom accent line */}
                   <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
-                    isSelected ? 'via-green-500' : 'via-red-500'
+                    !game.available 
+                      ? 'via-gray-600' 
+                      : isSelected 
+                        ? 'via-green-500' 
+                        : 'via-red-500'
                   }`}></div>
                 </Card>
               </div>

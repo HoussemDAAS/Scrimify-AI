@@ -42,12 +42,15 @@ export default function DashboardContent({
       <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
         <DashboardHero />
         
-        <GameSelector 
-          selectedGames={selectedGames}
-          currentGame={currentGame}
-          games={games}
-          onGameSelect={onGameSelect}
-        />
+        {/* Only show GameSelector if there are multiple games */}
+        {selectedGames.length > 1 && (
+          <GameSelector 
+            selectedGames={selectedGames}
+            currentGame={currentGame}
+            games={games}
+            onGameSelect={onGameSelect}
+          />
+        )}
 
         <CurrentGameDisplay 
           currentGame={currentGame}
@@ -56,7 +59,6 @@ export default function DashboardContent({
 
         <AITeamMatcher 
           currentGame={currentGame}
-          userTeams={userTeams}
         />
 
         <TeamActions 
