@@ -2,18 +2,19 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PrimaryButton } from '@/components/ui/primary-button'
 import { AccentButton } from '@/components/ui/accent-button'
 import { User, Settings, ArrowLeft, Brain, Save, RefreshCw } from 'lucide-react'
-import { getUserByClerkId, updateUserProfile, uploadUserAvatar } from '@/lib/supabase'
+import { getUserByClerkId, updateUserProfile, uploadUserAvatar, createUserFromClerk } from '@/lib/supabase'
 
+// Import profile components
 import ProfileHeader from '@/components/profile/ProfileHeader'
 import GeneralTab from '@/components/profile/GeneralTab'
 import GamingTab from '@/components/profile/GamingTab'
 import RiotTab from '@/components/profile/RiotTab'
 
+// Enhanced interfaces with better type safety
 interface UserProfileData {
   username: string
   bio: string
@@ -51,7 +52,6 @@ interface GameStats {
 export default function ProfilePage() {
   const { user } = useUser()
   const { signOut } = useClerk()
-  const router = useRouter()
   
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -88,7 +88,7 @@ export default function ProfilePage() {
     'Asia/Tokyo', 'Asia/Seoul', 'Asia/Shanghai', 'Australia/Sydney'
   ]
 
-  const loadGameStats = useCallback(async (riotUsername?: string, riotTagline?: string, puuid?: string, userGames?: string[], region?: string) => {
+  const loadGameStats = useCallback(async (riotUsername?: string, riotTagline?: string, puuid?: string, userGames?: string[], region?: string, userData?: { id: string }) => {
     if (!riotUsername || !riotTagline) return
 
     setIsLoadingStats(true)
@@ -105,7 +105,14 @@ export default function ProfilePage() {
       }
 
       try {
-        const response = await fetch('/api/riot', {
+        // Build URL with user ID for persistent storage
+        const apiUrl = new URL('/api/riot', window.location.origin)
+        if (userData?.id) {
+          apiUrl.searchParams.set('userId', userData.id)
+          console.log('💾 Including user ID for persistent storage:', userData.id)
+        }
+        
+        const response = await fetch(apiUrl.toString(), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -126,7 +133,7 @@ export default function ProfilePage() {
           }))
         } else {
           console.log('ℹ️ Riot API unavailable, using fallback data')
-          const fallbackStats: Record<string, any> = {}
+          const fallbackStats: Record<string, GameStats> = {}
           
           if (riotGames.includes('league-of-legends')) {
             fallbackStats['league-of-legends'] = {
@@ -145,7 +152,7 @@ export default function ProfilePage() {
         }
       } catch (riotError) {
         console.error('Riot API error:', riotError)
-        const errorStats: Record<string, any> = {}
+        const errorStats: Record<string, GameStats> = {}
         
         if (riotGames.includes('league-of-legends')) {
           errorStats['league-of-legends'] = {
@@ -175,22 +182,37 @@ export default function ProfilePage() {
 
     try {
       setIsLoading(true)
-      const userData = await getUserByClerkId(user.id)
+      console.log('🔍 Loading user profile for Clerk ID:', user.id)
       
+      // Try to get existing user
+      let userData = await getUserByClerkId(user.id)
+      
+      // If user doesn't exist, create from Clerk data with automatic avatar import
       if (!userData) {
-        router.push('/game-selection')
-        return
+        console.log('👤 Creating new user from Clerk data with avatar import')
+        userData = await createUserFromClerk({
+          id: user.id,
+          emailAddresses: user.emailAddresses,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          imageUrl: user.imageUrl
+        })
+        console.log('✅ New user created:', userData.username)
+      } else {
+        console.log('✅ Existing user data loaded:', userData.username)
       }
 
       const userGames = Array.isArray(userData.selected_game) 
         ? userData.selected_game 
         : userData.selected_game ? [userData.selected_game] : []
 
+      // Set profile data with proper defaults and better fallbacks
       setProfileData({
-        username: userData.username || '',
+        username: userData.username || user.username || user.firstName || '',
         bio: userData.bio || '',
         location: userData.location || '',
-        avatar_url: userData.avatar_url,
+        avatar_url: userData.avatar_url || user.imageUrl, // Fallback to Clerk avatar
         discord_username: userData.discord_username || '',
         riot_username: userData.riot_username || '',
         riot_tagline: userData.riot_tagline || '',
@@ -203,8 +225,10 @@ export default function ProfilePage() {
         selected_game: userData.selected_game || []
       })
 
-      if (userData.riot_account_verified && userData.riot_puuid) {
-        await loadGameStats(userData.riot_username, userData.riot_tagline, userData.riot_puuid, userGames)
+      // Load game stats if Riot account is verified
+      if (userData.riot_account_verified && userData.riot_puuid && userData.riot_username && userData.riot_tagline) {
+        console.log('🎮 Loading game stats for verified Riot account')
+        await loadGameStats(userData.riot_username, userData.riot_tagline, userData.riot_puuid, userGames, undefined, userData)
       }
 
     } catch (error) {
@@ -212,11 +236,13 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [user, router, loadGameStats])
+  }, [user, loadGameStats])
 
   useEffect(() => {
-    loadUserProfile()
-  }, [user])
+    if (user?.id) {
+      loadUserProfile()
+    }
+  }, [user?.id, loadUserProfile])
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -273,8 +299,8 @@ export default function ProfilePage() {
             console.log(`✅ Account found in region: ${region}`)
             break
           }
-        } catch (error) {
-          console.log(`❌ Account not found in region: ${region}`)
+        } catch (err) {
+          console.log(`❌ Account not found in region: ${region}`, err)
           continue
         }
       }
@@ -299,9 +325,9 @@ export default function ProfilePage() {
         ? profileData.selected_game 
         : profileData.selected_game ? [profileData.selected_game] : []
       
-      await loadGameStats(accountData.gameName, accountData.tagLine, accountData.puuid, userGames, detectedRegion)
+      await loadGameStats(accountData.gameName, accountData.tagLine, accountData.puuid, userGames, detectedRegion, { id: user?.id || '' })
       
-      alert(`Riot account connected successfully! (Region: ${detectedRegion.toUpperCase()})`)
+      // Removed success popup as requested
     } catch (error) {
       console.error('Error connecting Riot account:', error)
       alert('Failed to connect Riot account. Please try again.')
@@ -315,23 +341,61 @@ export default function ProfilePage() {
       const userGames = Array.isArray(profileData.selected_game) 
         ? profileData.selected_game 
         : profileData.selected_game ? [profileData.selected_game] : []
-      await loadGameStats(profileData.riot_username, profileData.riot_tagline, profileData.riot_puuid, userGames)
+      await loadGameStats(profileData.riot_username, profileData.riot_tagline, profileData.riot_puuid, userGames, undefined, { id: user?.id || '' })
     }
   }
 
+  // Enhanced save functionality with better validation and feedback
   const handleSaveProfile = async () => {
-    if (!user) return
+    if (!user?.id) {
+      console.error('❌ No user ID available for saving profile')
+      alert('User session not found. Please refresh the page.')
+      return
+    }
+
+    // Basic validation
+    if (!profileData.username.trim()) {
+      alert('Username is required')
+      return
+    }
 
     setIsSaving(true)
 
     try {
-      await updateUserProfile(user.id, {
-        ...profileData,
-        riot_puuid: profileData.riot_puuid
+      console.log('💾 Saving profile for Clerk ID:', user.id)
+      console.log('📝 Profile data:', profileData)
+
+      const updatedUser = await updateUserProfile(user.id, {
+        username: profileData.username.trim(),
+        bio: profileData.bio.trim(),
+        location: profileData.location.trim(),
+        discord_username: profileData.discord_username?.trim(),
+        riot_username: profileData.riot_username?.trim(),
+        riot_tagline: profileData.riot_tagline?.trim(),
+        riot_account_verified: profileData.riot_account_verified,
+        riot_puuid: profileData.riot_puuid,
+        date_of_birth: profileData.date_of_birth,
+        timezone: profileData.timezone,
+        competitive_level: profileData.competitive_level,
+        looking_for_team: profileData.looking_for_team,
+        avatar_url: profileData.avatar_url
       })
+
+      console.log('✅ Profile saved successfully:', updatedUser)
+      
+      // Update local state with the returned data
+      if (updatedUser) {
+        setProfileData(prev => ({
+          ...prev,
+          ...updatedUser,
+          selected_game: updatedUser.selected_game || prev.selected_game
+        }))
+      }
+
       alert('Profile updated successfully!')
+      
     } catch (error) {
-      console.error('Error saving profile:', error)
+      console.error('❌ Error saving profile:', error)
       alert('Failed to update profile. Please try again.')
     } finally {
       setIsSaving(false)
@@ -474,6 +538,7 @@ export default function ProfilePage() {
               setProfileData={setProfileData}
               gameStats={gameStats}
               isConnectingRiot={isConnectingRiot}
+              isLoadingStats={isLoadingStats}
               onConnectRiot={handleConnectRiot}
               onRefreshStats={handleRefreshStats}
             />

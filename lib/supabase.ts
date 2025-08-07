@@ -16,21 +16,301 @@ export interface User {
   username: string
   selected_game: string | string[]
   team_id?: string
-  // New profile fields
+  
+  // Enhanced profile fields
   bio?: string
   location?: string
   avatar_url?: string
   discord_username?: string
-  riot_username?: string
-  riot_tagline?: string
-  riot_account_verified?: boolean
-  riot_puuid?: string
   date_of_birth?: string
   timezone?: string
   competitive_level?: string
   looking_for_team?: boolean
+  
+  // Riot Games integration
+  riot_username?: string
+  riot_tagline?: string
+  riot_account_verified?: boolean
+  riot_puuid?: string
+  riot_region?: string
+  
+  // Metadata
   created_at: string
   updated_at: string
+}
+
+// Create user from Clerk data with automatic avatar import
+export async function createUserFromClerk(clerkUser: {
+  id: string
+  emailAddresses: Array<{ emailAddress: string }>
+  username?: string
+  firstName?: string
+  lastName?: string
+  imageUrl?: string
+}): Promise<User> {
+  try {
+    console.log('🆕 Creating user from Clerk data:', clerkUser.id)
+    
+    const email = clerkUser.emailAddresses[0]?.emailAddress
+    if (!email) {
+      throw new Error('No email found in Clerk user data')
+    }
+    
+    // Generate username from Clerk data
+    const username = clerkUser.username || 
+                    (clerkUser.firstName && clerkUser.lastName 
+                      ? `${clerkUser.firstName}_${clerkUser.lastName}` 
+                      : email.split('@')[0])
+    
+    const userData = {
+      clerk_id: clerkUser.id,
+      email,
+      username,
+      selected_game: ['league-of-legends'], // Default game as array
+      avatar_url: clerkUser.imageUrl || null,
+      looking_for_team: true, // Default to looking for team
+      competitive_level: 'casual' // Default level
+    }
+    
+    const { data, error } = await supabase
+      .from('users')
+      .insert(userData)
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Error creating user:', error)
+      throw error
+    }
+    
+    console.log('✅ Created user:', data.username)
+    return data
+  } catch (error) {
+    console.error('❌ Error in createUserFromClerk:', error)
+    throw error
+  }
+}
+
+// Enhanced function to update user profile with comprehensive data
+export async function updateUserProfile(clerkId: string, updates: Partial<User>): Promise<User> {
+  try {
+    console.log('🔄 Updating user profile for:', clerkId)
+    console.log('📝 Updates:', updates)
+    
+    // Remove fields that shouldn't be updated directly
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, clerk_id, created_at, ...safeUpdates } = updates
+    
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        ...safeUpdates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('clerk_id', clerkId)
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Error updating user profile:', error)
+      throw error
+    }
+    
+    // Normalize selected_game array
+    if (data) {
+      data.selected_game = normalizeGamesToArray(data.selected_game)
+    }
+    
+    console.log('✅ Updated user profile:', data.username)
+    return data
+  } catch (error) {
+    console.error('❌ Error in updateUserProfile:', error)
+    throw error
+  }
+}
+
+// Store or update user game statistics
+export async function upsertUserGameStatistics(
+  userId: string, 
+  gameId: string, 
+  stats: Omit<UserGameStatistics, 'id' | 'user_id' | 'game_id' | 'created_at' | 'last_updated'>
+): Promise<UserGameStatistics> {
+  try {
+    console.log('📊 Upserting game statistics for user:', userId, 'game:', gameId)
+    
+    const statisticsData = {
+      user_id: userId,
+      game_id: gameId,
+      ...stats,
+      last_updated: new Date().toISOString()
+    }
+    
+    const { data, error } = await supabase
+      .from('user_game_statistics')
+      .upsert(statisticsData, {
+        onConflict: 'user_id,game_id'
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Error upserting game statistics:', error)
+      throw error
+    }
+    
+    console.log('✅ Upserted game statistics')
+    return data
+  } catch (error) {
+    console.error('❌ Error in upsertUserGameStatistics:', error)
+    throw error
+  }
+}
+
+// Get user game statistics
+export async function getUserGameStatistics(userId: string, gameId: string): Promise<UserGameStatistics | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_game_statistics')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('game_id', gameId)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null // No statistics found
+      }
+      throw error
+    }
+    
+    return data
+  } catch (error) {
+    console.error('❌ Error getting user game statistics:', error)
+    throw error
+  }
+}
+
+// Store match history
+export async function addUserMatchHistory(
+  userId: string,
+  gameId: string,
+  matchData: Omit<UserMatchHistory, 'id' | 'user_id' | 'game_id' | 'created_at'>
+): Promise<UserMatchHistory> {
+  try {
+    console.log('🎮 Adding match history for user:', userId)
+    
+    const historyData = {
+      user_id: userId,
+      game_id: gameId,
+      ...matchData
+    }
+    
+    const { data, error } = await supabase
+      .from('user_match_history')
+      .insert(historyData)
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('❌ Error adding match history:', error)
+      throw error
+    }
+    
+    console.log('✅ Added match history')
+    return data
+  } catch (error) {
+    console.error('❌ Error in addUserMatchHistory:', error)
+    throw error
+  }
+}
+
+// Get recent match history
+export async function getUserMatchHistory(
+  userId: string, 
+  gameId: string, 
+  limit: number = 10
+): Promise<UserMatchHistory[]> {
+  try {
+    const { data, error } = await supabase
+      .from('user_match_history')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('game_id', gameId)
+      .order('match_date', { ascending: false })
+      .limit(limit)
+    
+    if (error) {
+      throw error
+    }
+    
+    return data || []
+  } catch (error) {
+    console.error('❌ Error getting user match history:', error)
+    throw error
+  }
+}
+
+export interface UserGameStatistics {
+  id: string
+  user_id: string
+  game_id: string
+  
+  // Profile Information
+  profile_icon_url?: string
+  summoner_level?: number
+  account_level?: number
+  
+  // Rank Information
+  current_rank: string
+  rank_points?: string // LP for LoL, RR for Valorant
+  rank_icon_url?: string
+  flex_rank?: string
+  
+  // Performance Statistics
+  main_role?: string
+  main_agent?: string
+  win_rate?: number
+  games_played?: number
+  wins?: number
+  losses?: number
+  total_matches?: number
+  average_kda?: number
+  
+  // Match History
+  last_played?: string
+  recent_form?: string // e.g., "WWLWW"
+  
+  // Additional Data
+  additional_stats?: Record<string, string | number | boolean | null>
+  
+  // Metadata
+  last_updated: string
+  created_at: string
+}
+
+export interface UserMatchHistory {
+  id: string
+  user_id: string
+  game_id: string
+  match_id: string
+  
+  // Match Details
+  match_date: string
+  queue_type: string
+  game_duration: number
+  
+  // Player Performance
+  champion_played?: string
+  role_played?: string
+  kills: number
+  deaths: number
+  assists: number
+  win: boolean
+  
+  // Additional Data
+  match_data?: Record<string, string | number | boolean | null>
+  
+  created_at: string
 }
 
 export interface UserGameProfile {
@@ -112,26 +392,34 @@ export async function createUser(userData: {
   }
 }
 
-export async function getUserByClerkId(clerkId: string) {
+// Enhanced function to get user by Clerk ID with better error handling
+export async function getUserByClerkId(clerkId: string): Promise<User | null> {
   try {
+    console.log('🔍 Getting user by Clerk ID:', clerkId)
+    
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('clerk_id', clerkId)
       .single()
     
-    if (error && error.code !== 'PGRST116') {
-      console.error('Supabase get user error:', error)
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('🔄 User not found, will need to create one')
+        return null
+      }
+      console.error('❌ Error fetching user:', error)
       throw error
     }
     
     if (data) {
       data.selected_game = normalizeGamesToArray(data.selected_game)
+      console.log('✅ Found user:', data?.username)
     }
     
     return data
   } catch (error) {
-    console.error('Error in getUserByClerkId:', error)
+    console.error('❌ Error in getUserByClerkId:', error)
     throw error
   }
 }
@@ -311,49 +599,6 @@ export async function getUserTeamCount(clerkId: string) {
   } catch (error) {
     console.error('Error in getUserTeamCount:', error)
     return 0
-  }
-}
-
-// User Profile Management Functions
-export async function updateUserProfile(clerkId: string, profileData: {
-  username?: string
-  bio?: string
-  location?: string
-  avatar_url?: string
-  discord_username?: string
-  riot_username?: string
-  riot_tagline?: string
-  riot_account_verified?: boolean
-  riot_puuid?: string
-  date_of_birth?: string
-  timezone?: string
-  competitive_level?: string
-  looking_for_team?: boolean
-}) {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .update({
-        ...profileData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('clerk_id', clerkId)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating user profile:', error)
-      throw error
-    }
-
-    if (data) {
-      data.selected_game = normalizeGamesToArray(data.selected_game)
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error in updateUserProfile:', error)
-    throw error
   }
 }
 

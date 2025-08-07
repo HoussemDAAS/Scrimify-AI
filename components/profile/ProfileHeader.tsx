@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Camera, User, MapPin, Trophy, Shield, RefreshCw } from 'lucide-react'
 import { gameConfigs } from '@/lib/game-configs'
 
+// Clean interface definitions
 interface UserProfileData {
   username: string
   bio: string
@@ -16,12 +17,15 @@ interface UserProfileData {
   riot_account_verified: boolean
 }
 
+interface ClerkUser {
+  username?: string
+  firstName?: string
+  lastName?: string
+}
+
 interface ProfileHeaderProps {
   profileData: UserProfileData
-  user: {
-    username?: string
-    firstName?: string
-  } | null
+  user: ClerkUser | null
   competitiveLevels: Array<{ value: string; label: string }>
   isUploadingAvatar: boolean
   onAvatarUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
@@ -34,11 +38,23 @@ export default function ProfileHeader({
   isUploadingAvatar, 
   onAvatarUpload 
 }: ProfileHeaderProps) {
-  const getUserSelectedGames = () => {
+  
+  // Helper function to get user's selected games as array
+  const getUserSelectedGames = (): string[] => {
     const games = Array.isArray(profileData.selected_game) 
       ? profileData.selected_game 
       : profileData.selected_game ? [profileData.selected_game] : []
     return games
+  }
+
+  // Helper function to get display name with fallbacks
+  const getDisplayName = (): string => {
+    if (profileData.username) return profileData.username
+    if (user?.username) return user.username
+    if (user?.firstName) {
+      return user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName
+    }
+    return 'Gaming Warrior'
   }
 
   return (
@@ -83,7 +99,7 @@ export default function ProfileHeader({
 
             <div className="flex-1 text-center sm:text-left">
               <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                {profileData.username || user?.username || 'Warrior'}
+                {getDisplayName()}
               </h2>
               <div className="flex flex-wrap justify-center sm:justify-start gap-2 mb-4">
                 {getUserSelectedGames().map((gameId) => (

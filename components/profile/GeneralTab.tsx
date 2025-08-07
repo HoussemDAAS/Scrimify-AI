@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { User } from 'lucide-react'
 
+// Clean interface for user profile data
 interface UserProfileData {
   username: string
   bio: string
@@ -19,7 +20,20 @@ interface GeneralTabProps {
   timezones: string[]
 }
 
-export default function GeneralTab({ profileData, setProfileData, timezones }: GeneralTabProps) {
+/**
+ * GeneralTab Component
+ * Handles basic user information like username, bio, location, etc.
+ */
+export default function GeneralTab({ 
+  profileData, 
+  setProfileData, 
+  timezones 
+}: GeneralTabProps) {
+  
+  // Helper function to update profile data
+  const updateField = (field: keyof UserProfileData, value: string) => {
+    setProfileData(prev => ({ ...prev, [field]: value }))
+  }
   return (
     <Card className="bg-gradient-to-br from-gray-900/90 to-black/90 border-2 border-red-500/30">
       <CardHeader>
@@ -34,7 +48,7 @@ export default function GeneralTab({ profileData, setProfileData, timezones }: G
             <Label className="text-white font-bold mb-2">Username</Label>
             <Input
               value={profileData.username}
-              onChange={(e) => setProfileData(prev => ({ ...prev, username: e.target.value }))}
+              onChange={(e) => updateField('username', e.target.value)}
               className="bg-gray-800 border-red-500/30 text-white"
               placeholder="Enter your username"
             />
@@ -44,7 +58,7 @@ export default function GeneralTab({ profileData, setProfileData, timezones }: G
             <Label className="text-white font-bold mb-2">Location</Label>
             <Input
               value={profileData.location}
-              onChange={(e) => setProfileData(prev => ({ ...prev, location: e.target.value }))}
+              onChange={(e) => updateField('location', e.target.value)}
               className="bg-gray-800 border-red-500/30 text-white"
               placeholder="City, Country"
             />
@@ -55,7 +69,7 @@ export default function GeneralTab({ profileData, setProfileData, timezones }: G
           <Label className="text-white font-bold mb-2">Bio</Label>
           <Textarea
             value={profileData.bio}
-            onChange={(e) => setProfileData(prev => ({ ...prev, bio: e.target.value }))}
+            onChange={(e) => updateField('bio', e.target.value)}
             className="bg-gray-800 border-red-500/30 text-white min-h-20"
             placeholder="Tell other players about yourself..."
           />

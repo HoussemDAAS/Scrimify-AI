@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AccentButton } from '@/components/ui/accent-button'
-import { Sword, RefreshCw, Shield, Target, Calendar, Trophy, BarChart } from 'lucide-react'
+import { Sword, RefreshCw, Shield, Target, Calendar, Trophy, BarChart, Brain, Database } from 'lucide-react'
 import { gameConfigs } from '@/lib/game-configs'
 
 // Updated GameStats interface to include new fields
@@ -187,6 +187,53 @@ export default function RiotTab({
 
   return (
     <div className="space-y-6">
+      {/* Gaming-styled Information Notices */}
+      <div className="space-y-4">
+        <div className="relative overflow-hidden bg-gradient-to-r from-red-900/20 via-red-800/30 to-red-900/20 border border-red-500/40 rounded-lg">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent animate-pulse"></div>
+          <div className="relative p-4">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-8 h-8 bg-gradient-to-br from-red-600 to-red-800 rounded-lg flex items-center justify-center">
+                  <Database className="w-4 h-4 text-white animate-pulse" />
+                </div>
+                <div className="absolute -inset-1 border border-red-500/30 rounded-lg animate-ping"></div>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-red-300 font-bold text-sm mb-1 tracking-wide">
+                  LIVE DATA COLLECTION
+                </h4>
+                <p className="text-gray-300 text-xs leading-relaxed">
+                  Real-time stats from your recent ranked matches • Advanced performance analytics • Accurate rank tracking
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden bg-gradient-to-r from-gray-900/40 via-gray-800/60 to-gray-900/40 border border-gray-500/30 rounded-lg">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-400/5 to-transparent animate-pulse"></div>
+          <div className="relative p-4">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-8 h-8 bg-gradient-to-br from-gray-600 to-gray-800 rounded-lg flex items-center justify-center">
+                  <Brain className="w-4 h-4 text-gray-300 animate-bounce" />
+                </div>
+                <div className="absolute -inset-1 border border-gray-500/20 rounded-lg animate-ping"></div>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-gray-300 font-bold text-sm mb-1 tracking-wide">
+                  SUPPORTED GAMES
+                </h4>
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  League of Legends fully integrated • More Riot games coming soon • Enhanced API coverage
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Card className="bg-gradient-to-br from-gray-900/90 to-black/90 border-2 border-red-500/30">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
@@ -254,21 +301,59 @@ export default function RiotTab({
         </CardContent>
       </Card>
 
-      {/* Loading State */}
+      {/* Enhanced Gaming-style Loading State */}
       {isLoadingStats && (
-        <Card className="bg-gradient-to-br from-gray-900/90 to-black/90 border-2 border-red-500/30">
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl flex items-center justify-center mb-4 mx-auto animate-pulse">
-                <RefreshCw className="w-8 h-8 text-white animate-spin" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-gray-900/95 to-black/95 border-2 border-red-500/50 rounded-lg">
+          {/* Animated background effects */}
+          <div className="absolute inset-0">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 via-red-500/20 to-red-600/10 animate-pulse"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
+          </div>
+          
+          <div className="relative py-20 px-8">
+            <div className="text-center space-y-6">
+              {/* Main loading icon with enhanced gaming animations */}
+              <div className="relative w-24 h-24 mx-auto">
+                <div className="absolute inset-0 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl flex items-center justify-center shadow-2xl shadow-red-500/30">
+                  <Brain className="w-12 h-12 text-white animate-pulse" />
+                </div>
+                <div className="absolute inset-0 border-2 border-red-400/50 rounded-2xl animate-spin"></div>
+                <div className="absolute -inset-3 border border-red-600/30 rounded-3xl animate-ping"></div>
+                <div className="absolute -inset-6 border border-red-500/20 rounded-full animate-pulse"></div>
               </div>
-              <p className="text-white font-bold text-lg mb-2">Gathering Data...</p>
-              <p className="text-gray-400 text-sm">
-                Analyzing your match history and performance statistics
-              </p>
+              
+              {/* Gaming-style loading text */}
+              <div className="space-y-4">
+                <h3 className="text-white font-bold text-2xl tracking-wider">
+                  ANALYZING PERFORMANCE
+                </h3>
+                <div className="flex items-center justify-center gap-3 text-red-400 font-semibold text-lg">
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <span className="tracking-wide">GATHERING MATCH DATA</span>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                </div>
+                <p className="text-gray-400 text-sm max-w-md mx-auto leading-relaxed">
+                  Scanning recent ranked matches • Calculating statistics • Processing performance metrics
+                </p>
+              </div>
+
+              {/* Gaming-style progress indicators */}
+              <div className="space-y-4">
+                <div className="flex justify-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce"></div>
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.3s'}}></div>
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                </div>
+                <div className="text-xs text-gray-500 font-mono tracking-wider">
+                  [████████████████████] CONNECTING TO RIOT SERVERS...
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Game Stats */}
@@ -276,27 +361,14 @@ export default function RiotTab({
         <div className="space-y-4">
           <h3 className="text-white font-bold text-lg">Game Statistics</h3>
           <div className="grid grid-cols-1 gap-4">
-            {/* Only show League of Legends for now - Valorant commented out due to no server data */}
+            {/* Only show League of Legends for now */}
             {getUserSelectedGames().filter(gameId => ['league-of-legends'].includes(gameId)).map((gameId) => {
               const stats = gameStats[gameId]
               return stats ? renderGameCard(gameId, stats) : null
             })}
           </div>
           
-          {getUserSelectedGames().some(gameId => ['valorant'].includes(gameId)) && (
-            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-                <span className="text-yellow-400 font-bold">Valorant Temporarily Unavailable</span>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Valorant statistics are currently unavailable due to server data limitations. 
-                This feature will be restored once server connectivity is resolved.
-              </p>
-            </div>
-          )}
-          
-          {getUserSelectedGames().filter(gameId => ['league-of-legends', 'valorant'].includes(gameId)).length === 0 && (
+          {getUserSelectedGames().filter(gameId => ['league-of-legends'].includes(gameId)).length === 0 && (
             <p className="text-gray-400 text-center py-8">
               No Riot Games selected in your gaming preferences.
             </p>
