@@ -5,7 +5,7 @@ import { useUser, useClerk } from '@clerk/nextjs'
 import Link from 'next/link'
 import { AccentButton } from '@/components/ui/accent-button'
 import { Settings, ArrowLeft, Brain, Menu } from 'lucide-react'
-import { getUserByClerkId, updateUserProfile, uploadUserAvatar, createUserFromClerk } from '@/lib/supabase'
+import { getUserByClerkId, updateUserProfile, uploadUserAvatar, createUserFromClerk, getUserGameStatistics } from '@/lib/supabase'
 
 // Import profile components
 import ProfileSidebar from '@/components/profile/navigation/ProfileSidebar'
@@ -190,6 +190,39 @@ export default function ProfilePage() {
     }
   }, [])
 
+  // Load saved game statistics from database
+  const loadSavedGameStats = useCallback(async (userData: { id: string }) => {
+    try {
+      // Load saved LoL stats
+      const lolStats = await getUserGameStatistics(userData.id, 'league-of-legends')
+      
+      if (lolStats) {
+        // Convert database stats to the format expected by the UI
+        const convertedStats: GameStats = {
+          rank: lolStats.current_rank || 'Unranked',
+          winRate: lolStats.win_rate ? `${lolStats.win_rate}%` : '0%',
+          mainRole: lolStats.main_role || 'Unknown',
+          gamesPlayed: lolStats.games_played || 0,
+          wins: lolStats.wins || 0,
+          losses: lolStats.losses || 0,
+          totalMatches: lolStats.total_matches || 0,
+          profileIcon: lolStats.profile_icon_url || '',
+          summonerLevel: lolStats.summoner_level || 0,
+          lastPlayed: lolStats.last_played ? new Date(lolStats.last_played).toLocaleDateString() : 'N/A',
+          lp: lolStats.rank_points || ''
+        }
+        
+        setGameStats(prev => ({
+          ...prev,
+          'league-of-legends': convertedStats
+        }))
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading saved game stats:', error)
+    }
+  }, [])
+
   const loadUserProfile = useCallback(async () => {
     if (!user) return
 
@@ -237,13 +270,16 @@ export default function ProfilePage() {
       if (userData.riot_account_verified && userData.riot_puuid && userData.riot_username && userData.riot_tagline) {
         await loadGameStats(userData.riot_username, userData.riot_tagline, userData.riot_puuid, userGames, undefined, userData)
       }
+      
+      // Always load saved game statistics from database
+      await loadSavedGameStats(userData)
 
     } catch (error) {
       console.error('Error loading profile:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [user, loadGameStats])
+  }, [user, loadGameStats, loadSavedGameStats])
 
   useEffect(() => {
     if (user?.id) {
@@ -360,6 +396,105 @@ export default function ProfilePage() {
     // In a real app, you'd save preferences to your backend
     // For now, just update local state
     setPreferencesData(preferences)
+  }
+
+  // Save LoL widget data to database
+  const handleSaveLoLStats = async () => {
+    if (!user?.id || !gameStats['league-of-legends']) {
+      console.error('Missing user ID or LoL stats')
+      alert('No LoL stats available to save')
+      return
+    }
+
+    try {
+      // First, get the internal database user ID using Clerk ID
+      const userData = await getUserByClerkId(user.id)
+      if (!userData) {
+        alert('User not found in database. Please try refreshing the page.')
+        return
+      }
+
+      const lolStats = gameStats['league-of-legends']
+      console.log('Raw LoL stats:', lolStats)
+      console.log('Using internal user ID:', userData.id)
+      
+      // Create the most minimal data structure first
+      const statsToSave: Record<string, string | number | null> = {
+        current_rank: lolStats.rank || 'Unranked'
+      }
+      
+      // Add optional fields only if they exist and are valid
+      if (lolStats.profileIcon) {
+        statsToSave.profile_icon_url = lolStats.profileIcon
+      }
+      
+      if (lolStats.summonerLevel && typeof lolStats.summonerLevel === 'number') {
+        statsToSave.summoner_level = lolStats.summonerLevel
+      }
+      
+      if (lolStats.lp) {
+        statsToSave.rank_points = lolStats.lp
+      }
+      
+      if (lolStats.mainRole) {
+        statsToSave.main_role = lolStats.mainRole
+      }
+      
+      // Process win rate safely
+      if (lolStats.winRate && typeof lolStats.winRate === 'string') {
+        const winRateValue = parseFloat(lolStats.winRate.replace('%', ''))
+        if (!isNaN(winRateValue) && winRateValue >= 0 && winRateValue <= 100) {
+          statsToSave.win_rate = winRateValue
+        }
+      }
+      
+      // Add numeric stats if they're valid
+      if (typeof lolStats.gamesPlayed === 'number') {
+        statsToSave.games_played = lolStats.gamesPlayed
+      }
+      
+      if (typeof lolStats.wins === 'number') {
+        statsToSave.wins = lolStats.wins
+      }
+      
+      if (typeof lolStats.losses === 'number') {
+        statsToSave.losses = lolStats.losses
+      }
+      
+      if (typeof lolStats.totalMatches === 'number') {
+        statsToSave.total_matches = lolStats.totalMatches
+      }
+      
+      if (lolStats.lastPlayed) {
+        statsToSave.last_played = lolStats.lastPlayed
+      }
+      
+      console.log('Final processed stats to save:', statsToSave)
+      
+      // Use the API route to save statistics
+      const response = await fetch('/api/save-stats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clerkUserId: user.id,
+          gameId: 'league-of-legends',
+          stats: statsToSave
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save statistics')
+      }
+      
+      alert('✅ LoL stats saved successfully to database!')
+    } catch (error) {
+      console.error('❌ Detailed error saving LoL stats:', error)
+      alert(`Failed to save LoL stats: ${error.message || 'Unknown error'}`)
+    }
   }
 
   // Render section content based on active section
@@ -509,6 +644,7 @@ export default function ProfilePage() {
               gameStats={gameStats}
               onAvatarUpload={handleAvatarUpload}
               isUploadingAvatar={isUploadingAvatar}
+              onSaveLoLStats={handleSaveLoLStats}
             />
           </div>
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { upsertUserGameStatistics } from '@/lib/supabase'
+import { upsertUserGameStatistics, getUserByClerkId } from '@/lib/supabase'
 
 const RIOT_API_KEY = process.env.RIOT_API_KEY
 
@@ -498,34 +498,42 @@ export async function POST(request: NextRequest) {
     console.log('🎉 Enhanced stats generation completed')
     
     // Store statistics persistently if user ID is provided
-    const userId = request.nextUrl.searchParams.get('userId')
-    if (userId) {
+    const clerkUserId = request.nextUrl.searchParams.get('userId')
+    if (clerkUserId) {
       try {
-        console.log('💾 Storing game statistics for user:', userId)
+        console.log('💾 Storing game statistics for Clerk user:', clerkUserId)
         
-        // Store League of Legends statistics
-        if (stats['league-of-legends'] && !stats['league-of-legends'].error) {
-          const lolStats = stats['league-of-legends']
-          await upsertUserGameStatistics(userId, 'league-of-legends', {
-            profile_icon_url: lolStats.profileIcon,
-            summoner_level: lolStats.summonerLevel,
-            current_rank: lolStats.rank,
-            rank_points: lolStats.lp,
-            flex_rank: lolStats.flexRank,
-            main_role: lolStats.mainRole,
-            win_rate: parseFloat(lolStats.winRate?.replace('%', '') || '0'),
-            games_played: lolStats.gamesPlayed,
-            wins: lolStats.wins,
-            losses: lolStats.losses,
-            total_matches: lolStats.totalMatches,
-            average_kda: parseFloat(lolStats.averageKDA || '0'),
-            last_played: lolStats.lastPlayed,
-            recent_form: lolStats.recentForm,
-            additional_stats: {
-              topChampions: JSON.stringify(lolStats.topChampions || [])
-            }
-          })
-          console.log('✅ League of Legends statistics stored')
+        // Get the internal database user ID from Clerk ID
+        const userData = await getUserByClerkId(clerkUserId)
+        if (!userData) {
+          console.log('⚠️ User not found in database for Clerk ID:', clerkUserId)
+        } else {
+          console.log('💾 Using internal database user ID:', userData.id)
+          
+          // Store League of Legends statistics
+          if (stats['league-of-legends'] && !stats['league-of-legends'].error) {
+            const lolStats = stats['league-of-legends']
+            await upsertUserGameStatistics(userData.id, 'league-of-legends', {
+              profile_icon_url: lolStats.profileIcon,
+              summoner_level: lolStats.summonerLevel,
+              current_rank: lolStats.rank,
+              rank_points: lolStats.lp,
+              flex_rank: lolStats.flexRank,
+              main_role: lolStats.mainRole,
+              win_rate: parseFloat(lolStats.winRate?.replace('%', '') || '0'),
+              games_played: lolStats.gamesPlayed,
+              wins: lolStats.wins,
+              losses: lolStats.losses,
+              total_matches: lolStats.totalMatches,
+              average_kda: parseFloat(lolStats.averageKDA || '0'),
+              last_played: lolStats.lastPlayed,
+              recent_form: lolStats.recentForm,
+              additional_stats: {
+                topChampions: JSON.stringify(lolStats.topChampions || [])
+              }
+            })
+            console.log('✅ League of Legends statistics stored')
+          }
         }
         
       } catch (storageError) {

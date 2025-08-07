@@ -147,3 +147,33 @@ CREATE POLICY user_game_statistics_policy ON user_game_statistics
 -- Allow users to manage their own match history
 CREATE POLICY user_match_history_policy ON user_match_history
     FOR ALL USING (auth.uid() = user_id);
+
+-- ========================================
+-- FIX: Add missing updated_at column and trigger
+-- ========================================
+
+-- Add updated_at column if it doesn't exist
+ALTER TABLE user_game_statistics 
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Add a trigger to automatically update the updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create the trigger
+DROP TRIGGER IF EXISTS update_user_game_statistics_updated_at ON user_game_statistics;
+CREATE TRIGGER update_user_game_statistics_updated_at
+    BEFORE UPDATE ON user_game_statistics
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Verify the table structure
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = 'user_game_statistics'
+ORDER BY ordinal_position;

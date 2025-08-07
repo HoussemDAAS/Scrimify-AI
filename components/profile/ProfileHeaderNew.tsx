@@ -1,6 +1,6 @@
 import React from 'react'
 import Image from 'next/image'
-import { User, Upload, Crown, Shield, Trophy } from 'lucide-react'
+import { User, Upload, Crown, Shield, Save } from 'lucide-react'
 
 interface UserProfileData {
   username: string
@@ -14,6 +14,9 @@ interface GameStats {
   rank?: string
   winRate?: string
   profileIcon?: string
+  summonerLevel?: number
+  lp?: string
+  mainRole?: string
 }
 
 interface ProfileHeaderNewProps {
@@ -21,6 +24,7 @@ interface ProfileHeaderNewProps {
   gameStats?: Record<string, GameStats>
   onAvatarUpload: (file: File) => void
   isUploadingAvatar: boolean
+  onSaveLoLStats?: () => void
 }
 
 /**
@@ -31,7 +35,8 @@ export default function ProfileHeaderNew({
   profileData, 
   gameStats,
   onAvatarUpload, 
-  isUploadingAvatar 
+  isUploadingAvatar,
+  onSaveLoLStats
 }: ProfileHeaderNewProps) {
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,11 +47,11 @@ export default function ProfileHeaderNew({
   }
 
   const lolStats = gameStats?.['league-of-legends']
-  const showLoLWidget = profileData.riot_account_verified && profileData.riot_username
+  const showLoLWidget = (profileData.riot_account_verified && profileData.riot_username) || lolStats
   
   return (
     <div className="bg-gradient-to-r from-gray-900/95 to-black/95 border border-red-500/20 rounded-lg p-6 mb-6">
-      <div className="flex items-start gap-6">
+      <div className="flex items-start gap-6 flex-wrap lg:flex-nowrap">
         {/* Avatar Section */}
         <div className="relative">
           <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-red-500/50 bg-gradient-to-br from-red-500/20 to-red-600/20">
@@ -105,42 +110,77 @@ export default function ProfileHeaderNew({
           </div>
         </div>
 
-        {/* League of Legends Widget */}
+        {/* League of Legends Widget - Minimalistic Design */}
         {showLoLWidget && (
-          <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-blue-500/40 rounded-xl p-6 min-w-[240px] shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-                <Trophy className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-blue-300 text-xs font-bold uppercase tracking-wider">League of Legends</p>
-                <p className="text-white text-lg font-bold">{profileData.riot_username}</p>
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300 text-sm">Current Rank</span>
-                <span className="text-blue-300 font-bold text-sm">{lolStats?.rank || 'Unranked'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300 text-sm">Win Rate</span>
-                <span className="text-green-400 font-bold text-sm">{lolStats?.winRate || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300 text-sm">Status</span>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-green-400 text-sm font-medium">Connected</span>
+          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-red-500/20 rounded-xl p-4 min-w-[200px] shadow-lg">
+            {/* Header with Game Icon */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">LoL</span>
                 </div>
+                <span className="text-gray-400 text-xs font-medium uppercase tracking-wide">League of Legends</span>
+              </div>
+              {onSaveLoLStats && (
+                <button
+                  onClick={onSaveLoLStats}
+                  className="text-gray-400 hover:text-red-400 transition-colors duration-200"
+                  title="Save LoL stats to database"
+                >
+                  <Save className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            
+            {/* Main Content */}
+            <div className="flex items-center gap-3">
+              {/* Profile Icon */}
+              <div className="relative">
+                {lolStats?.profileIcon ? (
+                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-red-500/30 bg-gray-700">
+                    <Image
+                      src={lolStats.profileIcon}
+                      alt="Summoner Icon"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30 flex items-center justify-center">
+                    <User className="w-6 h-6 text-red-400" />
+                  </div>
+                )}
+                {/* Level Badge */}
+                {lolStats?.summonerLevel && (
+                  <div className="absolute -bottom-1 -right-1 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-md border border-red-500">
+                    {lolStats.summonerLevel}
+                  </div>
+                )}
+              </div>
+              
+              {/* Stats */}
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold text-sm truncate mb-1">
+                  {profileData.riot_username || 'LoL Player'}
+                </p>
+                <div className="flex items-center gap-3 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <span className="text-yellow-400 font-medium">{lolStats?.rank || 'Unranked'}</span>
+                  </div>
+                  {lolStats?.winRate && (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-green-400 font-medium">{lolStats.winRate}</span>
+                    </div>
+                  )}
+                </div>
+                {lolStats?.lp && (
+                  <p className="text-gray-400 text-xs mt-1">{lolStats.lp} LP</p>
+                )}
               </div>
             </div>
-            
-            <div className="mt-4 w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600 h-2 rounded-full w-4/5 animate-pulse"></div>
-            </div>
-            
-            <p className="text-xs text-gray-400 mt-2 text-center">Gaming Performance</p>
           </div>
         )}
       </div>

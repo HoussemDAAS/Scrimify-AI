@@ -2,12 +2,24 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: false
   }
 })
+
+// Service role client for server-side operations that bypass RLS
+// Falls back to regular client if service key is not available
+export const supabaseAdmin = supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : supabase
 
 export interface User {
   id: string
@@ -133,19 +145,24 @@ export async function updateUserProfile(clerkId: string, updates: Partial<User>)
 export async function upsertUserGameStatistics(
   userId: string, 
   gameId: string, 
-  stats: Omit<UserGameStatistics, 'id' | 'user_id' | 'game_id' | 'created_at' | 'last_updated'>
+  stats: Partial<Omit<UserGameStatistics, 'id' | 'user_id' | 'game_id' | 'created_at' | 'last_updated'>>
 ): Promise<UserGameStatistics> {
   try {
     console.log('📊 Upserting game statistics for user:', userId, 'game:', gameId)
     
+    // Ensure current_rank is always present as it's required
+    const safeStats = {
+      current_rank: 'Unranked',
+      ...stats
+    }
+    
     const statisticsData = {
       user_id: userId,
       game_id: gameId,
-      ...stats,
-      last_updated: new Date().toISOString()
+      ...safeStats
     }
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('user_game_statistics')
       .upsert(statisticsData, {
         onConflict: 'user_id,game_id'
@@ -154,11 +171,16 @@ export async function upsertUserGameStatistics(
       .single()
     
     if (error) {
-      console.error('❌ Error upserting game statistics:', error)
-      throw error
+      console.error('❌ Supabase error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
+      throw new Error(`Database error: ${error.message}`)
     }
     
-    console.log('✅ Upserted game statistics')
+    console.log('✅ Upserted game statistics successfully')
     return data
   } catch (error) {
     console.error('❌ Error in upsertUserGameStatistics:', error)
@@ -397,7 +419,7 @@ export async function getUserByClerkId(clerkId: string): Promise<User | null> {
   try {
     console.log('🔍 Getting user by Clerk ID:', clerkId)
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('clerk_id', clerkId)
