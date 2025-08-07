@@ -21,7 +21,7 @@ interface NotificationDropdownProps {
 export default function NotificationDropdown({ clerkId }: NotificationDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
-  const { notifications, unreadCount, isLoading, handleRequest } = useTeamNotifications(clerkId)
+  const { notifications, matchRequests, unreadCount, isLoading, handleRequest, handleMatchRequest } = useTeamNotifications(clerkId)
 
   const handleAction = async (requestId: string, action: 'accept' | 'decline') => {
     setProcessingId(requestId)
@@ -31,6 +31,18 @@ export default function NotificationDropdown({ clerkId }: NotificationDropdownPr
       // Success feedback could be added here
     } else {
       alert(`Failed to ${action} request: ${result.error}`)
+    }
+    setProcessingId(null)
+  }
+
+  const handleMatchAction = async (requestId: string, action: 'accept' | 'decline') => {
+    setProcessingId(requestId)
+    const result = await handleMatchRequest(requestId, action)
+    
+    if (result.success) {
+      alert(`Match ${action}ed successfully!`)
+    } else {
+      alert(result.error || `Failed to ${action} match request`)
     }
     setProcessingId(null)
   }
@@ -70,12 +82,23 @@ export default function NotificationDropdown({ clerkId }: NotificationDropdownPr
           <div className="absolute right-0 top-full mt-2 w-80 bg-gradient-to-br from-gray-900 to-black border border-red-500/30 rounded-lg shadow-2xl z-50 max-h-96 overflow-hidden">
             <div className="p-4 border-b border-red-500/20">
               <div className="flex items-center justify-between">
-                <h3 className="text-white font-bold text-sm">Team Join Requests</h3>
-                {unreadCount > 0 && (
-                  <Badge className="bg-red-600 text-white text-xs">
-                    {unreadCount} pending
-                  </Badge>
-                )}
+                <h3 className="text-white font-bold text-sm">Notifications</h3>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <Badge className="bg-red-600 text-white text-xs">
+                      {unreadCount} pending
+                    </Badge>
+                  )}
+                  <button 
+                    onClick={() => {
+                      console.log('🔄 Manual refresh triggered')
+                      window.location.href = '/api/debug-match-requests'
+                    }}
+                    className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded border border-gray-600 hover:border-gray-500"
+                  >
+                    Debug
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -85,10 +108,10 @@ export default function NotificationDropdown({ clerkId }: NotificationDropdownPr
                   <Clock className="w-6 h-6 text-gray-400 animate-pulse mx-auto mb-2" />
                   <p className="text-gray-400 text-sm">Loading...</p>
                 </div>
-              ) : notifications.length === 0 ? (
+              ) : notifications.length === 0 && matchRequests.length === 0 ? (
                 <div className="p-4 text-center">
                   <Bell className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No pending requests</p>
+                  <p className="text-gray-400 text-sm">No pending notifications</p>
                 </div>
               ) : (
                 <div className="divide-y divide-red-500/10">
@@ -134,6 +157,61 @@ export default function NotificationDropdown({ clerkId }: NotificationDropdownPr
                               className="text-xs px-2 py-1 h-6"
                               disabled={processingId === notification.id}
                               onClick={() => handleAction(notification.id, 'decline')}
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Decline
+                            </SecondaryButton>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Match Requests */}
+                  {matchRequests.map((matchRequest) => (
+                    <div key={`match-${matchRequest.id}`} className="p-4 hover:bg-purple-500/5 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-800 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white font-bold text-xs">⚔️</span>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-white text-sm font-bold truncate">
+                              Match Challenge
+                            </p>
+                            <Badge className="bg-purple-600/20 text-purple-400 text-xs border border-purple-500/30">
+                              {matchRequest.match_type}
+                            </Badge>
+                          </div>
+                          
+                          <div className="text-gray-300 text-xs mb-2">
+                            <strong>{matchRequest.challenger_team.name}</strong> challenges <strong>{matchRequest.opponent_team.name}</strong>
+                          </div>
+                          
+                          {matchRequest.message && (
+                            <div className="mb-2 p-2 bg-gray-800/50 rounded text-xs">
+                              <MessageSquare className="w-3 h-3 inline mr-1 text-purple-400" />
+                              <span className="text-gray-300 italic">&quot;{matchRequest.message}&quot;</span>
+                            </div>
+                          )}
+                          
+                          <div className="flex gap-1.5">
+                            <PrimaryButton
+                              size="sm"
+                              className="text-xs px-2 py-1 h-6 bg-purple-600 hover:bg-purple-700"
+                              disabled={processingId === matchRequest.id}
+                              onClick={() => handleMatchAction(matchRequest.id, 'accept')}
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Accept
+                            </PrimaryButton>
+                            
+                            <SecondaryButton
+                              size="sm"
+                              className="text-xs px-2 py-1 h-6"
+                              disabled={processingId === matchRequest.id}
+                              onClick={() => handleMatchAction(matchRequest.id, 'decline')}
                             >
                               <XCircle className="w-3 h-3 mr-1" />
                               Decline

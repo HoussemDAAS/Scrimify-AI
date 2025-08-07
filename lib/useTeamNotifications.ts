@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
-import { getTeamJoinRequests, respondToJoinRequest } from '@/lib/supabase'
+import { getTeamJoinRequests, respondToJoinRequest, getPendingMatchRequests, respondToMatchRequest, MatchRequestWithDetails } from '@/lib/supabase'
 
 interface JoinRequestWithUser {
   id: string
@@ -24,6 +24,7 @@ interface JoinRequestWithUser {
 
 export function useTeamNotifications(clerkId: string) {
   const [notifications, setNotifications] = useState<JoinRequestWithUser[]>([])
+  const [matchRequests, setMatchRequests] = useState<MatchRequestWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -51,11 +52,23 @@ export function useTeamNotifications(clerkId: string) {
         }
       }
       
+      // Get pending match requests
+      console.log('🔔 Loading pending match requests for user:', clerkId)
+      const pendingMatchRequests = await getPendingMatchRequests(clerkId)
+      console.log('📨 Pending match requests found:', pendingMatchRequests.length)
+      console.log('📋 Match requests details:', pendingMatchRequests)
+      
       setNotifications(allRequests)
-      setUnreadCount(allRequests.length)
+      setMatchRequests(pendingMatchRequests)
+      setUnreadCount(allRequests.length + pendingMatchRequests.length)
+      
+      console.log('🔢 Total notifications:', allRequests.length)
+      console.log('🎮 Total match requests:', pendingMatchRequests.length)
+      console.log('📊 Total unread count:', allRequests.length + pendingMatchRequests.length)
     } catch (error) {
       console.error('Error loading notifications:', error)
       setNotifications([])
+      setMatchRequests([])
     } finally {
       setIsLoading(false)
     }
@@ -76,6 +89,21 @@ export function useTeamNotifications(clerkId: string) {
     }
   }
 
+  const handleMatchRequest = async (requestId: string, action: 'accept' | 'decline') => {
+    try {
+      await respondToMatchRequest(requestId, clerkId, action)
+      
+      // Remove the match request from notifications
+      setMatchRequests(prev => prev.filter(req => req.id !== requestId))
+      setUnreadCount(prev => Math.max(0, prev - 1))
+      
+      return { success: true }
+    } catch (error: any) {
+      console.error(`Error ${action}ing match request:`, error)
+      return { success: false, error: error.message }
+    }
+  }
+
   useEffect(() => {
     loadNotifications()
     
@@ -87,9 +115,11 @@ export function useTeamNotifications(clerkId: string) {
 
   return {
     notifications,
+    matchRequests,
     unreadCount,
     isLoading,
     handleRequest,
+    handleMatchRequest,
     refreshNotifications: loadNotifications
   }
 }
