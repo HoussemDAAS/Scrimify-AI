@@ -1113,3 +1113,229 @@ export async function respondToJoinRequest(requestId: string, clerkId: string, a
     throw error
   }
 }
+
+// Get team members
+export async function getTeamMembers(teamId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('team_memberships')
+      .select(`
+        *,
+        users!inner(id, username, avatar_url, competitive_level, riot_account_verified)
+      `)
+      .eq('team_id', teamId)
+      .order('joined_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching team members:', error)
+      throw error
+    }
+
+    return data?.map(membership => ({
+      id: membership.users.id,
+      username: membership.users.username,
+      avatar_url: membership.users.avatar_url,
+      role: membership.role,
+      joined_at: membership.joined_at,
+      competitive_level: membership.users.competitive_level,
+      riot_account_verified: membership.users.riot_account_verified
+    })) || []
+  } catch (error) {
+    console.error('Error in getTeamMembers:', error)
+    throw error
+  }
+}
+
+// Accept join request
+export async function acceptJoinRequest(requestId: string) {
+  try {
+    const { data: request, error: requestError } = await supabaseAdmin
+      .from('team_join_requests')
+      .select(`
+        *,
+        teams!inner(id, current_members, max_members)
+      `)
+      .eq('id', requestId)
+      .eq('status', 'pending')
+      .single()
+
+    if (requestError) {
+      console.error('Error fetching join request:', requestError)
+      throw new Error('Join request not found')
+    }
+
+    if (request.teams.current_members >= request.teams.max_members) {
+      throw new Error('Team is now full')
+    }
+
+    // Add member to team
+    const { error: membershipError } = await supabaseAdmin
+      .from('team_memberships')
+      .insert([{
+        team_id: request.team_id,
+        user_id: request.user_id,
+        role: 'member',
+        joined_at: new Date().toISOString()
+      }])
+
+    if (membershipError) {
+      console.error('Error adding team member:', membershipError)
+      throw new Error('Failed to add member to team')
+    }
+
+    // Update team member count
+    const { error: teamUpdateError } = await supabaseAdmin
+      .from('teams')
+      .update({ 
+        current_members: request.teams.current_members + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', request.team_id)
+
+    if (teamUpdateError) {
+      console.error('Error updating team member count:', teamUpdateError)
+    }
+
+    // Update request status
+    const { error: statusError } = await supabaseAdmin
+      .from('team_join_requests')
+      .update({ 
+        status: 'accepted',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requestId)
+
+    if (statusError) {
+      console.error('Error updating request status:', statusError)
+      throw new Error('Failed to update request status')
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in acceptJoinRequest:', error)
+    throw error
+  }
+}
+
+// Reject join request
+export async function rejectJoinRequest(requestId: string) {
+  try {
+    const { error } = await supabaseAdmin
+      .from('team_join_requests')
+      .update({ 
+        status: 'declined',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requestId)
+
+    if (error) {
+      console.error('Error rejecting join request:', error)
+      throw error
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in rejectJoinRequest:', error)
+    throw error
+  }
+}
+
+// Remove team member
+export async function removeTeamMember(teamId: string, memberId: string) {
+  try {
+    // Remove membership
+    const { error: membershipError } = await supabaseAdmin
+      .from('team_memberships')
+      .delete()
+      .eq('team_id', teamId)
+      .eq('user_id', memberId)
+
+    if (membershipError) {
+      console.error('Error removing team member:', membershipError)
+      throw membershipError
+    }
+
+    // Update team member count
+    const { data: team, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('current_members')
+      .eq('id', teamId)
+      .single()
+
+    if (!teamError && team) {
+      await supabaseAdmin
+        .from('teams')
+        .update({ 
+          current_members: Math.max(0, team.current_members - 1),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', teamId)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in removeTeamMember:', error)
+    throw error
+  }
+}
+
+// Update team
+export async function updateTeam(teamId: string, updates: {
+  name?: string
+  description?: string
+  rank_requirement?: string
+  practice_schedule?: string
+}) {
+  try {
+    const { error } = await supabaseAdmin
+      .from('teams')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', teamId)
+
+    if (error) {
+      console.error('Error updating team:', error)
+      throw error
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in updateTeam:', error)
+    throw error
+  }
+}
+
+// Delete team
+export async function deleteTeam(teamId: string) {
+  try {
+    // Delete all memberships first
+    await supabaseAdmin
+      .from('team_memberships')
+      .delete()
+      .eq('team_id', teamId)
+
+    // Delete all join requests
+    await supabaseAdmin
+      .from('team_join_requests')
+      .delete()
+      .eq('team_id', teamId)
+
+    // Delete the team
+    const { error } = await supabaseAdmin
+      .from('teams')
+      .delete()
+      .eq('id', teamId)
+
+    if (error) {
+      console.error('Error deleting team:', error)
+      throw error
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in deleteTeam:', error)
+    throw error
+  }
+}

@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser, useClerk } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { PrimaryButton } from '@/components/ui/primary-button'
@@ -12,24 +11,19 @@ import { SecondaryButton } from '@/components/ui/secondary-button'
 import { Badge } from '@/components/ui/badge'
 import { 
   Crosshair, 
-  Trophy, 
   Users, 
-  ArrowLeft,
   Brain,
   Target,
   Gamepad2,
   Crown,
   Flame,
-  LogOut,
   Plus,
-  Check,
-  X
+  Check
 } from 'lucide-react'
 import { getUserByClerkId, createUser, addUserGame, removeUserGame } from '@/lib/supabase'
 
 export default function GameSelectionPage() {
   const { user } = useUser()
-  const { signOut } = useClerk()
   const router = useRouter()
   const [selectedGames, setSelectedGames] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -189,41 +183,6 @@ export default function GameSelectionPage() {
         ))}
       </div>
 
-      {/* Back Button and Logout - Responsive */}
-      <div className="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 z-20 flex justify-between items-center">
-        <Link 
-          href="/"
-          className="flex items-center gap-2 text-white hover:text-red-500 transition-colors duration-300 group"
-        >
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg flex items-center justify-center group-hover:border-red-500 transition-all duration-300">
-            <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
-          </div>
-          <span className="hidden lg:block font-bold text-sm md:text-base">BACK TO BASE</span>
-        </Link>
-
-        {/* User Profile & Logout - Responsive */}
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="flex items-center gap-2 md:gap-3 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg px-2 py-1 md:px-4 md:py-2">
-            <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center">
-              <Target className="w-3 h-3 md:w-4 md:h-4 text-white" />
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-white font-bold text-xs md:text-sm">{user?.username || user?.firstName || 'Warrior'}</p>
-              <p className="text-gray-400 text-xs">{selectedGames.length} Games Selected</p>
-            </div>
-          </div>
-          
-          <AccentButton
-            onClick={() => signOut()}
-            size="sm"
-            className="px-2 py-1 md:px-4 md:py-2"
-          >
-            <LogOut className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden md:block ml-2 text-xs md:text-sm font-bold">LOGOUT</span>
-          </AccentButton>
-        </div>
-      </div>
-
       <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
         {/* Header - Updated for Multi-Selection */}
         <div className="text-center mb-12 md:mb-16">
@@ -267,7 +226,7 @@ export default function GameSelectionPage() {
 
         {/* Games Grid - Updated for Multi-Selection */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8 max-w-6xl mx-auto">
-          {games.map((game, index) => {
+          {games.map((game) => {
             const isSelected = selectedGames.includes(game.id)
             return (
               <div key={game.id} className="group relative">

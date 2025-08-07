@@ -1,7 +1,9 @@
 import React from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SecondaryButton } from '@/components/ui/secondary-button'
 import { 
   Star, 
   Users, 
@@ -9,7 +11,9 @@ import {
   Shield, 
   MapPin, 
   Calendar,
-  ChevronRight
+  ChevronRight,
+  Settings,
+  Eye
 } from 'lucide-react'
 import { Team, TeamMembership } from '@/lib/supabase'
 
@@ -24,6 +28,14 @@ export default function TeamCard({ team, membership, onClick, className = '' }: 
   const isOwner = membership?.role === 'owner'
   const isCaptain = membership?.role === 'captain'
 
+  const handleManageClick = (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click event
+  }
+
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click event
+  }
+
   return (
     <div className={`group relative ${className}`}>
       <div className="absolute -inset-2 bg-gradient-to-r from-red-600/10 to-red-800/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
@@ -37,24 +49,26 @@ export default function TeamCard({ team, membership, onClick, className = '' }: 
           <div className="flex items-start gap-3 mb-4">
             {/* Team Logo */}
             <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 bg-gray-800 border-2 border-red-500/30 rounded-xl flex items-center justify-center overflow-hidden group-hover:border-red-500/60 transition-colors duration-300">
+              <div className="w-16 h-16 bg-gray-800/50 border-2 border-red-500/30 rounded-xl flex items-center justify-center overflow-hidden group-hover:border-red-500/60 transition-colors duration-300">
                 {team.logo_url ? (
                   <Image 
                     src={team.logo_url} 
                     alt={`${team.name} logo`}
                     width={64}
                     height={64}
-                    className="w-full h-full object-cover rounded-lg"
+                    className="w-full h-full object-cover"
                     priority={false}
                   />
                 ) : (
-                  <Shield className="w-8 h-8 text-gray-500" />
+                  <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-red-400" />
+                  </div>
                 )}
               </div>
               
               {/* Role Badge */}
               {membership && (isOwner || isCaptain) && (
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center border-2 border-gray-900 shadow-lg">
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center border-2 border-black shadow-lg">
                   {isOwner ? (
                     <Crown className="w-3 h-3 text-white" />
                   ) : (
@@ -74,7 +88,7 @@ export default function TeamCard({ team, membership, onClick, className = '' }: 
               </div>
               
               {membership && (
-                <Badge className="bg-red-600 text-white text-xs font-bold px-2 py-1">
+                <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs font-bold px-2 py-1">
                   {membership.role.toUpperCase()}
                 </Badge>
               )}
@@ -133,25 +147,47 @@ export default function TeamCard({ team, membership, onClick, className = '' }: 
             )}
           </div>
 
-          {/* Status Indicator */}
-          <div className="flex items-center justify-between pt-3 border-t border-red-500/20">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                team.current_members < team.max_members 
-                  ? 'bg-green-500 animate-pulse' 
-                  : 'bg-red-500'
-              }`}></div>
-              <span className="text-gray-400 text-xs">
-                {team.current_members < team.max_members 
-                  ? 'Recruiting' 
-                  : 'Full Roster'
-                }
+          {/* Status Indicator and Actions */}
+          <div className="pt-3 border-t border-red-500/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  team.current_members < team.max_members 
+                    ? 'bg-green-500 animate-pulse' 
+                    : 'bg-red-500'
+                }`}></div>
+                <span className="text-gray-400 text-xs">
+                  {team.current_members < team.max_members 
+                    ? 'Recruiting' 
+                    : 'Full Roster'
+                  }
+                </span>
+              </div>
+              
+              <span className="text-gray-500 text-xs">
+                {team.game.replace('-', ' ').toUpperCase()}
               </span>
             </div>
-            
-            <span className="text-gray-500 text-xs">
-              {team.game.replace('-', ' ').toUpperCase()}
-            </span>
+
+            {/* Action Buttons */}
+            {membership && (
+              <div className="flex gap-2">
+                {isOwner && (
+                  <Link href="/teams/manage" onClick={handleManageClick} className="flex-1">
+                    <SecondaryButton size="sm" className="w-full text-xs bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700/50 hover:text-white">
+                      <Settings className="w-3 h-3 mr-1" />
+                      Manage
+                    </SecondaryButton>
+                  </Link>
+                )}
+                <Link href={`/teams/${team.id}`} onClick={handleViewClick} className={isOwner ? "flex-1" : "w-full"}>
+                  <SecondaryButton size="sm" className="w-full text-xs bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30 hover:text-red-300">
+                    <Eye className="w-3 h-3 mr-1" />
+                    View
+                  </SecondaryButton>
+                </Link>
+              </div>
+            )}
           </div>
         </CardHeader>
         
