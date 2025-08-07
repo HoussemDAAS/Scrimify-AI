@@ -1020,7 +1020,8 @@ export async function getTeamJoinRequests(teamId: string, clerkId: string) {
       .from('team_join_requests')
       .select(`
         *,
-        users!inner(id, username, email, clerk_id)
+        users!inner(id, username, email, clerk_id, avatar_url, competitive_level, riot_account_verified),
+        teams!inner(id, name)
       `)
       .eq('team_id', teamId)
       .eq('status', 'pending')
