@@ -8,10 +8,8 @@ import Image from 'next/image'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PrimaryButton } from '@/components/ui/primary-button'
 import { SecondaryButton } from '@/components/ui/secondary-button'
-import { AccentButton } from '@/components/ui/accent-button'
 import { Badge } from '@/components/ui/badge'
 import TeamCard from '@/components/TeamCard'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import { 
   Crosshair, 
   Trophy, 
@@ -24,11 +22,30 @@ import {
   Flame,
   UserPlus,
   Settings,
-  LogOut,
   Gamepad2,
   ChevronRight
 } from 'lucide-react'
-import { getUserByClerkId, getUserTeamsForGame, TeamMembership, Team } from '@/lib/supabase'
+import { getUserByClerkId, getUserTeamsForGame, getUserGameStatistics, TeamMembership, Team } from '@/lib/supabase'
+import DashboardHeader from '@/components/DashboardHeader'
+
+interface UserProfile {
+  username: string
+  avatar_url?: string
+  bio?: string
+  competitive_level: string
+  selected_game: string[]
+  riot_account_verified?: boolean
+  riot_username?: string
+  looking_for_team?: boolean
+}
+
+interface GameStats {
+  rank?: string
+  winRate?: string
+  mainRole?: string
+  summonerLevel?: number
+  profileIcon?: string
+}
 
 export default function DashboardPage() {
   const { user } = useUser()
@@ -38,6 +55,10 @@ export default function DashboardPage() {
   const [currentGame, setCurrentGame] = useState<string>('')
   const [userTeams, setUserTeams] = useState<(TeamMembership & { teams: Team })[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  
+  // Enhanced profile state
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [gameStats, setGameStats] = useState<Record<string, GameStats>>({})
 
   const games = [
     { 
@@ -99,6 +120,39 @@ export default function DashboardPage() {
           : [existingUser.selected_game]
         setSelectedGames(games)
         setCurrentGame(games[0]) // Set first game as default
+        
+        // Set enhanced profile data
+        setUserProfile({
+          username: existingUser.username || user.username || user.firstName || 'Warrior',
+          avatar_url: existingUser.avatar_url || user.imageUrl,
+          bio: existingUser.bio || '',
+          competitive_level: existingUser.competitive_level || 'casual',
+          selected_game: games,
+          riot_account_verified: existingUser.riot_account_verified || false,
+          riot_username: existingUser.riot_username || '',
+          looking_for_team: existingUser.looking_for_team !== false
+        })
+        
+        // Load LoL game stats if available
+        if (games.includes('league-of-legends')) {
+          try {
+            const lolStats = await getUserGameStatistics(existingUser.id, 'league-of-legends')
+            if (lolStats) {
+              setGameStats({
+                'league-of-legends': {
+                  rank: lolStats.current_rank || 'Unranked',
+                  winRate: lolStats.win_rate ? `${lolStats.win_rate}%` : undefined,
+                  mainRole: lolStats.main_role || undefined,
+                  summonerLevel: lolStats.summoner_level || undefined,
+                  profileIcon: lolStats.profile_icon_url || undefined
+                }
+              })
+            }
+          } catch (statsError) {
+            console.log('No LoL stats found:', statsError)
+          }
+        }
+        
         setIsLoading(false)
       } catch (error) {
         console.error('Error loading user data:', error)
@@ -194,28 +248,15 @@ export default function DashboardPage() {
         </Link>
 
         <div className="flex items-center gap-2 md:gap-3">
-          {user && (
-            <NotificationDropdown clerkId={user.id} />
+          {/* Unified Header Component */}
+          {userProfile && user && (
+            <DashboardHeader
+              user={userProfile}
+              gameStats={gameStats}
+              clerkId={user.id}
+              onSignOut={() => signOut()}
+            />
           )}
-
-          <div className="flex items-center gap-2 md:gap-3 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg px-2 py-1 md:px-4 md:py-2">
-            <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center">
-              <Users className="w-3 h-3 md:w-4 md:h-4 text-white" />
-            </div>
-            <Link href="/profile" className="hidden sm:block group">
-              <p className="text-white font-bold text-xs md:text-sm group-hover:text-red-300 transition-colors">{user?.username || user?.firstName || 'Warrior'}</p>
-              <p className="text-gray-400 text-xs group-hover:text-gray-300 transition-colors">{selectedGames.length} Games • {userTeams.length} Teams</p>
-            </Link>
-          </div>
-          
-          <AccentButton
-            onClick={() => signOut()}
-            size="sm"
-            className="px-2 py-1 md:px-4 md:py-2"
-          >
-            <LogOut className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden md:block ml-2 text-xs md:text-sm font-bold">LOGOUT</span>
-          </AccentButton>
         </div>
       </div>
 
