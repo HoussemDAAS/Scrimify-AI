@@ -23,6 +23,14 @@ interface AITeamRecommendation {
     max_members: number
     rank_requirement?: string
     logo_url?: string
+    // LoL-specific fields
+    playstyle?: string
+    primary_goal?: string
+    communication_style?: string
+    preferred_roles?: string[]
+    wins?: number
+    losses?: number
+    win_rate?: number
   }
   score: number
   reason: string
@@ -65,17 +73,16 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
   }, [user, currentGame, selectedTeamId])
 
   const fetchRecommendations = useCallback(async () => {
-    // Don't fetch if user has no teams or no team is selected
-    if (userTeams.length === 0 || !selectedTeamId) {
-      setLoading(false)
-      return
-    }
+    // Always try to fetch recommendations - the API will handle users with no teams
+    // (showing teams they can join instead of teams to play against)
 
     try {
       setLoading(true)
       setError(null)
 
-      const url = `/api/ai/team-recommendations?game=${currentGame}&selectedTeamId=${selectedTeamId}&limit=5`
+      const url = selectedTeamId 
+        ? `/api/ai/team-recommendations?game=${currentGame}&selectedTeamId=${selectedTeamId}&limit=5`
+        : `/api/ai/team-recommendations?game=${currentGame}&limit=5`
       
       const response = await fetch(url)
       
@@ -94,6 +101,83 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
     }
   }, [currentGame, selectedTeamId, userTeams.length])
 
+  // Comprehensive debug function
+  const debugAIEndpoint = async () => {
+    console.log('🔍 COMPREHENSIVE AI DEBUG ANALYSIS')
+    console.log('='.repeat(50))
+    
+    try {
+      // Step 1: Check debug endpoint for complete analysis
+      console.log('\n1️⃣ Running comprehensive debug analysis...')
+      const debugResponse = await fetch('/api/debug-ai')
+      
+      if (debugResponse.ok) {
+        const debugData = await debugResponse.json()
+        console.log('📊 COMPLETE DEBUG REPORT:')
+        console.log(JSON.stringify(debugData, null, 2))
+        
+        // Analyze the results
+        const info = debugData.debug_info
+        
+        console.log('\n🔍 ANALYSIS SUMMARY:')
+        console.log(`• User authenticated: ${info.authentication?.authenticated ? '✅' : '❌'}`)
+        console.log(`• User found in DB: ${info.user_lookup?.found ? '✅' : '❌'}`)
+        console.log(`• Total teams in DB: ${info.all_teams?.total_count || 0}`)
+        console.log(`• LoL teams available: ${info.lol_teams?.count || 0}`)
+        console.log(`• User has LoL teams: ${info.user_teams?.count || 0}`)
+        console.log(`• Teams after filtering: ${info.filtering?.after_filtering || 0}`)
+        console.log(`• OpenAI configured: ${info.openai?.api_key_configured ? '✅' : '❌'}`)
+        console.log(`• Database connection: ${info.database?.connection_ok ? '✅' : '❌'}`)
+        
+        // Identify the specific issue
+        console.log('\n🎯 ISSUE IDENTIFICATION:')
+        if (!info.authentication?.authenticated) {
+          console.log('❌ ISSUE: User not authenticated')
+        } else if (!info.user_lookup?.found) {
+          console.log('❌ ISSUE: User not found in database')
+        } else if ((info.lol_teams?.count || 0) === 0) {
+          console.log('❌ ISSUE: No League of Legends teams in database')
+        } else if ((info.filtering?.after_filtering || 0) === 0) {
+          console.log('❌ ISSUE: All teams filtered out (user owns all teams)')
+        } else if (!info.openai?.api_key_configured) {
+          console.log('⚠️ ISSUE: OpenAI API key not configured (will use fallback)')
+        } else {
+          console.log('✅ All checks passed - should work! Testing AI endpoint...')
+          
+          // Step 2: Test AI endpoint with current settings
+          console.log('\n2️⃣ Testing AI endpoint...')
+          const aiUrl = `/api/ai/team-recommendations?game=${currentGame}&limit=5`
+          const aiResponse = await fetch(aiUrl)
+          
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json()
+            console.log('🤖 AI ENDPOINT RESPONSE:', aiData)
+            
+            if (aiData.recommendations?.length > 0) {
+              console.log('🎉 SUCCESS: Found recommendations!')
+              aiData.recommendations.forEach((rec: any, i: number) => {
+                console.log(`  ${i+1}. ${rec.team.name} (${rec.score}% match)`)
+              })
+            } else {
+              console.log('❌ AI endpoint returned 0 recommendations')
+            }
+          } else {
+            console.log('❌ AI endpoint failed:', await aiResponse.text())
+          }
+        }
+        
+      } else {
+        console.log('❌ Debug endpoint failed:', await debugResponse.text())
+      }
+      
+    } catch (error) {
+      console.error('❌ Debug analysis failed:', error)
+    }
+    
+    console.log('\n' + '='.repeat(50))
+    console.log('🔧 Debug analysis complete. Check logs above for issues.')
+  }
+
   useEffect(() => {
     if (user && currentGame) {
       loadUserTeams()
@@ -101,7 +185,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
   }, [user, currentGame, loadUserTeams])
 
   useEffect(() => {
-    if (user && currentGame && userTeams.length > 0) {
+    if (user && currentGame) {
       fetchRecommendations()
     }
   }, [user, currentGame, selectedTeamId, userTeams.length, fetchRecommendations])
@@ -210,7 +294,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-purple-400" />
-            <CardTitle className="text-white">AI Team Recommendations</CardTitle>
+            <CardTitle className="text-white">AI Opponent Finder</CardTitle>
           </div>
           <CardDescription className="text-gray-400">
             Finding perfect team matches for you...
@@ -243,7 +327,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-400" />
-            <CardTitle className="text-white">AI Team Recommendations</CardTitle>
+            <CardTitle className="text-white">AI Opponent Finder</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -267,12 +351,12 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-400" />
-            <CardTitle className="text-white">AI Team Recommendations</CardTitle>
+            <CardTitle className="text-white">AI Opponent Finder</CardTitle>
           </div>
           <CardDescription className="text-gray-400">
             {!selectedTeamId 
-              ? "Select a team above to get AI recommendations" 
-              : "No team recommendations available right now"
+              ? "Select a team above to find opponents" 
+              : "No opponent matches available right now"
             }
           </CardDescription>
         </CardHeader>
@@ -282,7 +366,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
             <p className="text-gray-400 mb-4">
               {!selectedTeamId 
                 ? "Choose one of your teams to analyze and find perfect opponents!" 
-                : "No suitable opponents found for this team right now. Try again later."
+                : "No suitable opponents found. Our AI is analyzing teams - try again in a moment!"
               }
             </p>
             {!selectedTeamId && userTeams.length > 1 && (
@@ -306,6 +390,16 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
         <CardDescription className="text-gray-400">
           Perfect matches found for your team
         </CardDescription>
+        
+        {/* Debug Button - Remove this after testing */}
+        <div className="mt-2">
+          <button 
+            onClick={debugAIEndpoint}
+            className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded"
+          >
+            🐛 Debug AI Endpoint
+          </button>
+        </div>
         
         {/* Team Selector */}
         {userTeams.length > 1 && (
@@ -360,7 +454,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
                       {recommendation.team.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-white font-semibold group-hover:text-purple-300 transition-colors">
                       {recommendation.team.name}
                     </h3>
@@ -369,10 +463,34 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
                       {recommendation.team.region}
                       <Users className="w-3 h-3 ml-2" />
                       {recommendation.team.current_members}/{recommendation.team.max_members}
+                      {recommendation.team.win_rate !== undefined && (
+                        <>
+                          <Trophy className="w-3 h-3 ml-2" />
+                          {recommendation.team.win_rate}% WR
+                        </>
+                      )}
+                    </div>
+                    {/* LoL-specific badges */}
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {recommendation.team.playstyle && (
+                        <Badge variant="outline" className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                          {recommendation.team.playstyle}
+                        </Badge>
+                      )}
+                      {recommendation.team.primary_goal && (
+                        <Badge variant="outline" className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
+                          {recommendation.team.primary_goal}
+                        </Badge>
+                      )}
+                      {recommendation.team.communication_style && (
+                        <Badge variant="outline" className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
+                          {recommendation.team.communication_style}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col items-end gap-2">
                   <Badge 
                     variant="outline" 
                     className={getSkillGapColor(recommendation.skillGap)}
@@ -391,6 +509,37 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
               <p className="text-gray-300 text-sm mb-3">
                 {recommendation.reason}
               </p>
+
+              {/* Compatibility Factors - AI Analysis Breakdown */}
+              <div className="mb-3 p-3 bg-gray-800/30 rounded-lg border border-gray-700">
+                <h4 className="text-xs font-semibold text-purple-300 mb-2">🧠 AI COMPATIBILITY ANALYSIS</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Skill Match:</span>
+                    <span className={`font-medium ${recommendation.compatibilityFactors.skillMatch >= 80 ? 'text-green-400' : recommendation.compatibilityFactors.skillMatch >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {recommendation.compatibilityFactors.skillMatch}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Region Match:</span>
+                    <span className={`font-medium ${recommendation.compatibilityFactors.regionMatch >= 80 ? 'text-green-400' : recommendation.compatibilityFactors.regionMatch >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {recommendation.compatibilityFactors.regionMatch}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Activity Match:</span>
+                    <span className={`font-medium ${recommendation.compatibilityFactors.activityMatch >= 80 ? 'text-green-400' : recommendation.compatibilityFactors.activityMatch >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {recommendation.compatibilityFactors.activityMatch}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Playstyle Match:</span>
+                    <span className={`font-medium ${recommendation.compatibilityFactors.playstyleMatch >= 80 ? 'text-green-400' : recommendation.compatibilityFactors.playstyleMatch >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {recommendation.compatibilityFactors.playstyleMatch}%
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 text-xs text-gray-400">

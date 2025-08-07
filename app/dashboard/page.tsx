@@ -150,13 +150,59 @@ export default function DashboardPage() {
     )
   }
 
+  // Debug function for AI endpoint
+  const debugAIEndpoint = async () => {
+    console.log('🚀 Debug AI Endpoint - Dashboard Page')
+    console.log('Current game format:', currentGame)
+    
+    try {
+      // Use the current game format from state (should be 'league-of-legends')
+      const url = `/api/ai/team-recommendations?game=${currentGame}&limit=5`
+      console.log('Testing URL:', url)
+      
+      const response = await fetch(url)
+      console.log('Response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('AI Response:', data)
+        console.log('Recommendations count:', data.recommendations?.length || 0)
+        
+        if (data.recommendations?.length > 0) {
+          console.log('🎉 SUCCESS! Found recommendations:')
+          data.recommendations.forEach((rec: any, i: number) => {
+            console.log(`  ${i+1}. ${rec.team.name} (${rec.score}% match, ${rec.team.region})`)
+          })
+        } else {
+          console.log('❌ No recommendations found - check server logs')
+        }
+      } else {
+        console.error('Error response:', await response.text())
+      }
+    } catch (error) {
+      console.error('Fetch error:', error)
+    }
+  }
+
   return (
-    <DashboardContent
-      selectedGames={selectedGames}
-      currentGame={currentGame}
-      userTeams={userTeams}
-      games={games}
-      onGameSelect={setCurrentGame}
-    />
+    <div>
+      {/* Temporary Debug Button */}
+      <div className="fixed top-4 right-4 z-50">
+        <button 
+          onClick={debugAIEndpoint}
+          className="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded shadow-lg text-sm font-bold"
+        >
+          🐛 Debug AI
+        </button>
+      </div>
+      
+      <DashboardContent
+        selectedGames={selectedGames}
+        currentGame={currentGame}
+        userTeams={userTeams}
+        games={games}
+        onGameSelect={setCurrentGame}
+      />
+    </div>
   )
 }

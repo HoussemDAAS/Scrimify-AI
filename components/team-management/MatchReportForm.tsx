@@ -4,11 +4,10 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PrimaryButton } from '@/components/ui/primary-button'
 import { SecondaryButton } from '@/components/ui/secondary-button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Trophy, Star, MessageSquare, Users, Target, Plus } from 'lucide-react'
+import { Trophy, Star, Target, Plus } from 'lucide-react'
 
 interface MatchReportFormProps {
   teamId: string
