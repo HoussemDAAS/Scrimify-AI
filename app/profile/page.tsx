@@ -3,16 +3,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useUser, useClerk } from '@clerk/nextjs'
 import Link from 'next/link'
-import { PrimaryButton } from '@/components/ui/primary-button'
 import { AccentButton } from '@/components/ui/accent-button'
-import { User, Settings, ArrowLeft, Brain, Save, RefreshCw } from 'lucide-react'
+import { Settings, ArrowLeft, Brain, Menu } from 'lucide-react'
 import { getUserByClerkId, updateUserProfile, uploadUserAvatar, createUserFromClerk } from '@/lib/supabase'
 
 // Import profile components
-import ProfileHeader from '@/components/profile/ProfileHeader'
-import GeneralTab from '@/components/profile/GeneralTab'
-import GamingTab from '@/components/profile/GamingTab'
-import RiotTab from '@/components/profile/RiotTab'
+import ProfileSidebar from '@/components/profile/navigation/ProfileSidebar'
+import { ProfileSection } from '@/components/profile/navigation/ProfileSidebar'
+import { default as ProfileHeaderNew } from '@/components/profile/ProfileHeaderNew'
+import { default as GeneralTab } from '@/components/profile/GeneralTab'
+import { default as GamingTab } from '@/components/profile/GamingTab'
+import { default as RiotTab } from '@/components/profile/RiotTab'
+import { default as PreferencesTab } from '@/components/profile/sections/PreferencesTab'
 
 // Enhanced interfaces with better type safety
 interface UserProfileData {
@@ -30,6 +32,13 @@ interface UserProfileData {
   competitive_level: string
   looking_for_team: boolean
   selected_game: string | string[]
+}
+
+interface PreferencesData {
+  notifications_enabled?: boolean
+  profile_visibility?: 'public' | 'private' | 'friends-only'
+  show_online_status?: boolean
+  allow_team_invites?: boolean
 }
 
 interface GameStats {
@@ -53,8 +62,11 @@ export default function ProfilePage() {
   const { user } = useUser()
   const { signOut } = useClerk()
   
+  // Navigation state
+  const [activeSection, setActiveSection] = useState<ProfileSection>('general')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  
   const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [isConnectingRiot, setIsConnectingRiot] = useState(false)
   const [isLoadingStats, setIsLoadingStats] = useState(false)
@@ -72,8 +84,14 @@ export default function ProfilePage() {
     selected_game: []
   })
 
+  const [preferencesData, setPreferencesData] = useState<PreferencesData>({
+    notifications_enabled: true,
+    profile_visibility: 'public',
+    show_online_status: true,
+    allow_team_invites: true
+  })
+
   const [gameStats, setGameStats] = useState<Record<string, GameStats>>({})
-  const [activeTab, setActiveTab] = useState<'general' | 'gaming' | 'riot'>('general')
 
   const competitiveLevels = [
     { value: 'casual', label: 'Casual Player', description: 'Playing for fun and improvement' },
@@ -94,8 +112,6 @@ export default function ProfilePage() {
     setIsLoadingStats(true)
 
     try {
-      console.log(`🔍 Loading stats via Riot API for ${riotUsername}#${riotTagline}`)
-      
       const games = userGames || []
       const riotGames = games.filter(game => ['league-of-legends'].includes(game))
       
@@ -109,7 +125,6 @@ export default function ProfilePage() {
         const apiUrl = new URL('/api/riot', window.location.origin)
         if (userData?.id) {
           apiUrl.searchParams.set('userId', userData.id)
-          console.log('💾 Including user ID for persistent storage:', userData.id)
         }
         
         const response = await fetch(apiUrl.toString(), {
@@ -126,13 +141,11 @@ export default function ProfilePage() {
 
         if (response.ok) {
           const data = await response.json()
-          console.log('✅ Riot API stats loaded successfully:', data.stats)
           setGameStats(prev => ({
             ...prev,
             ...data.stats
           }))
         } else {
-          console.log('ℹ️ Riot API unavailable, using fallback data')
           const fallbackStats: Record<string, GameStats> = {}
           
           if (riotGames.includes('league-of-legends')) {
@@ -182,14 +195,12 @@ export default function ProfilePage() {
 
     try {
       setIsLoading(true)
-      console.log('🔍 Loading user profile for Clerk ID:', user.id)
       
       // Try to get existing user
       let userData = await getUserByClerkId(user.id)
       
       // If user doesn't exist, create from Clerk data with automatic avatar import
       if (!userData) {
-        console.log('👤 Creating new user from Clerk data with avatar import')
         userData = await createUserFromClerk({
           id: user.id,
           emailAddresses: user.emailAddresses,
@@ -198,9 +209,6 @@ export default function ProfilePage() {
           lastName: user.lastName,
           imageUrl: user.imageUrl
         })
-        console.log('✅ New user created:', userData.username)
-      } else {
-        console.log('✅ Existing user data loaded:', userData.username)
       }
 
       const userGames = Array.isArray(userData.selected_game) 
@@ -227,7 +235,6 @@ export default function ProfilePage() {
 
       // Load game stats if Riot account is verified
       if (userData.riot_account_verified && userData.riot_puuid && userData.riot_username && userData.riot_tagline) {
-        console.log('🎮 Loading game stats for verified Riot account')
         await loadGameStats(userData.riot_username, userData.riot_tagline, userData.riot_puuid, userGames, undefined, userData)
       }
 
@@ -244,9 +251,8 @@ export default function ProfilePage() {
     }
   }, [user?.id, loadUserProfile])
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file || !user) return
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return
 
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file')
@@ -280,8 +286,6 @@ export default function ProfilePage() {
     setIsConnectingRiot(true)
 
     try {
-      console.log(`Connecting Riot account: ${profileData.riot_username}#${profileData.riot_tagline}`)
-      
       const regionsToTry = ['europe', 'americas', 'asia']
       let accountFound = false
       let accountData = null
@@ -289,18 +293,15 @@ export default function ProfilePage() {
       
       for (const region of regionsToTry) {
         try {
-          console.log(`🌍 Trying region: ${region}`)
           const response = await fetch(`/api/riot?gameName=${encodeURIComponent(profileData.riot_username)}&tagLine=${encodeURIComponent(profileData.riot_tagline)}&region=${region}`)
           
           if (response.ok) {
             accountData = await response.json()
             detectedRegion = region
             accountFound = true
-            console.log(`✅ Account found in region: ${region}`)
             break
           }
-        } catch (err) {
-          console.log(`❌ Account not found in region: ${region}`, err)
+        } catch {
           continue
         }
       }
@@ -309,8 +310,6 @@ export default function ProfilePage() {
         alert('Account not found in any region. Please check your username and tagline.')
         return
       }
-      
-      console.log('Riot account verified:', accountData)
       
       setProfileData(prev => ({ 
         ...prev, 
@@ -345,60 +344,67 @@ export default function ProfilePage() {
     }
   }
 
-  // Enhanced save functionality with better validation and feedback
-  const handleSaveProfile = async () => {
-    if (!user?.id) {
-      console.error('❌ No user ID available for saving profile')
-      alert('User session not found. Please refresh the page.')
-      return
-    }
-
-    // Basic validation
-    if (!profileData.username.trim()) {
-      alert('Username is required')
-      return
-    }
-
-    setIsSaving(true)
+  // Save functions for each section
+  const handleSaveProfile = async (updates: Partial<UserProfileData>) => {
+    if (!user?.id) return
 
     try {
-      console.log('💾 Saving profile for Clerk ID:', user.id)
-      console.log('📝 Profile data:', profileData)
-
-      const updatedUser = await updateUserProfile(user.id, {
-        username: profileData.username.trim(),
-        bio: profileData.bio.trim(),
-        location: profileData.location.trim(),
-        discord_username: profileData.discord_username?.trim(),
-        riot_username: profileData.riot_username?.trim(),
-        riot_tagline: profileData.riot_tagline?.trim(),
-        riot_account_verified: profileData.riot_account_verified,
-        riot_puuid: profileData.riot_puuid,
-        date_of_birth: profileData.date_of_birth,
-        timezone: profileData.timezone,
-        competitive_level: profileData.competitive_level,
-        looking_for_team: profileData.looking_for_team,
-        avatar_url: profileData.avatar_url
-      })
-
-      console.log('✅ Profile saved successfully:', updatedUser)
-      
-      // Update local state with the returned data
-      if (updatedUser) {
-        setProfileData(prev => ({
-          ...prev,
-          ...updatedUser,
-          selected_game: updatedUser.selected_game || prev.selected_game
-        }))
-      }
-
-      alert('Profile updated successfully!')
-      
+      await updateUserProfile(user.id, updates)
     } catch (error) {
       console.error('❌ Error saving profile:', error)
-      alert('Failed to update profile. Please try again.')
-    } finally {
-      setIsSaving(false)
+      throw error
+    }
+  }
+
+  const handleSavePreferences = async (preferences: PreferencesData) => {
+    // In a real app, you'd save preferences to your backend
+    // For now, just update local state
+    setPreferencesData(preferences)
+  }
+
+  // Render section content based on active section
+  const renderActiveSection = () => {
+    switch (activeSection) {
+      case 'general':
+        return (
+          <GeneralTab
+            profileData={profileData}
+            setProfileData={setProfileData}
+            timezones={timezones}
+            competitiveLevels={competitiveLevels}
+            onSave={handleSaveProfile}
+          />
+        )
+      case 'gaming':
+        return (
+          <GamingTab
+            profileData={profileData}
+            setProfileData={setProfileData}
+            competitiveLevels={competitiveLevels}
+          />
+        )
+      case 'riot':
+        return (
+          <RiotTab
+            profileData={profileData}
+            setProfileData={setProfileData}
+            gameStats={gameStats}
+            isConnectingRiot={isConnectingRiot}
+            isLoadingStats={isLoadingStats}
+            onConnectRiot={handleConnectRiot}
+            onRefreshStats={handleRefreshStats}
+          />
+        )
+      case 'preferences':
+        return (
+          <PreferencesTab
+            preferencesData={preferencesData}
+            setPreferencesData={setPreferencesData}
+            onSave={handleSavePreferences}
+          />
+        )
+      default:
+        return null
     }
   }
 
@@ -416,154 +422,100 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="grid grid-cols-8 md:grid-cols-12 gap-2 md:gap-4 h-full">
-          {Array.from({ length: 96 }).map((_, i) => (
-            <div key={i} className="border border-red-500/20"></div>
-          ))}
-        </div>
-      </div>
-
-      <div className="absolute inset-0">
-        <div className="absolute top-20 left-20 w-40 h-40 bg-red-600/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-60 right-32 w-48 h-48 bg-red-500/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-32 left-1/3 w-44 h-44 bg-red-700/20 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
-
-      {/* Header */}
-      <div className="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 z-20 flex justify-between items-center">
-        <Link 
-          href="/dashboard"
-          className="flex items-center gap-2 text-white hover:text-red-500 transition-colors duration-300 group"
-        >
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg flex items-center justify-center group-hover:border-red-500 transition-all duration-300">
-            <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
-          </div>
-          <span className="hidden lg:block font-bold text-sm md:text-base">BACK TO DASHBOARD</span>
-        </Link>
-
-        <div className="flex items-center gap-2 md:gap-3">
-          <AccentButton
-            onClick={() => signOut()}
-            size="sm"
-            className="px-2 py-1 md:px-4 md:py-2"
-          >
-            <Settings className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden md:block ml-2 text-xs md:text-sm font-bold">LOGOUT</span>
-          </AccentButton>
-        </div>
-      </div>
-
-      <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
-        {/* Page Title */}
-        <div className="text-center mb-12 md:mb-16">
-          <div className="flex justify-center mb-6 md:mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 w-20 h-20 md:w-24 md:h-24 border-4 border-red-500/30 rounded-3xl animate-spin-slow"></div>
-              <div className="relative w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center">
-                <User className="w-10 h-10 md:w-12 md:h-12 text-white" />
-              </div>
-            </div>
-          </div>
-          
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-black text-white mb-3 md:mb-4 relative px-4">
-            <span className="relative">
-              WARRIOR PROFILE
-              <div className="absolute inset-0 bg-red-500/10 blur-xl animate-pulse"></div>
-            </span>
-          </h1>
-          <p className="text-gray-300 font-medium text-base md:text-lg max-w-2xl mx-auto px-4">
-            Customize your gaming profile and connect your accounts for enhanced team matching
-          </p>
-        </div>
-
-        {/* Profile Header Component */}
-        <ProfileHeader
-          profileData={profileData}
-          user={user}
-          competitiveLevels={competitiveLevels}
-          isUploadingAvatar={isUploadingAvatar}
-          onAvatarUpload={handleAvatarUpload}
+    <div className="min-h-screen bg-black flex">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
         />
+      )}
 
-        {/* Tabs */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <div className="flex justify-center mb-6">
-            <div className="bg-gray-900/60 border border-red-500/30 rounded-lg p-1">
-              {[
-                { id: 'general', label: 'General', icon: User },
-                { id: 'gaming', label: 'Gaming', icon: User },
-                { id: 'riot', label: 'Riot Games', icon: User }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as 'general' | 'gaming' | 'riot')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+      {/* Sidebar - Collapsible on Mobile */}
+      <div className={`
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0
+        fixed lg:static
+        w-64 lg:w-80 
+        flex-shrink-0 
+        min-h-screen 
+        z-50 lg:z-auto
+        transition-transform duration-300 ease-in-out
+      `}>
+        <ProfileSidebar
+          activeSection={activeSection}
+          setActiveSection={setActiveSection}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 min-w-0 relative overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="grid grid-cols-8 md:grid-cols-12 gap-2 md:gap-4 h-full">
+            {Array.from({ length: 96 }).map((_, i) => (
+              <div key={i} className="border border-red-500/20"></div>
+            ))}
           </div>
         </div>
 
-        {/* Tab Content */}
-        <div className="max-w-4xl mx-auto">
-          {activeTab === 'general' && (
-            <GeneralTab
-              profileData={profileData}
-              setProfileData={setProfileData}
-              timezones={timezones}
-            />
-          )}
-
-          {activeTab === 'gaming' && (
-            <GamingTab
-              profileData={profileData}
-              setProfileData={setProfileData}
-              competitiveLevels={competitiveLevels}
-            />
-          )}
-
-          {activeTab === 'riot' && (
-            <RiotTab
-              profileData={profileData}
-              setProfileData={setProfileData}
-              gameStats={gameStats}
-              isConnectingRiot={isConnectingRiot}
-              isLoadingStats={isLoadingStats}
-              onConnectRiot={handleConnectRiot}
-              onRefreshStats={handleRefreshStats}
-            />
-          )}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-40 h-40 bg-red-600/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-60 right-32 w-48 h-48 bg-red-500/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute bottom-32 left-1/3 w-44 h-44 bg-red-700/20 rounded-full blur-3xl animate-pulse delay-500"></div>
         </div>
 
-        {/* Save Button */}
-        <div className="max-w-4xl mx-auto mt-8 text-center">
-          <PrimaryButton
-            onClick={handleSaveProfile}
-            disabled={isSaving}
-            className="px-8 py-3 text-lg font-bold"
-          >
-            {isSaving ? (
-              <>
-                <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                Saving Profile...
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5 mr-2" />
-                Save Profile
-              </>
-            )}
-          </PrimaryButton>
+        {/* Header */}
+        <div className="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 z-20 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden w-8 h-8 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg flex items-center justify-center hover:border-red-500 transition-all duration-300 text-white"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+            
+            <Link 
+              href="/dashboard"
+              className="flex items-center gap-2 text-white hover:text-red-500 transition-colors duration-300 group"
+            >
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-900/80 backdrop-blur-sm border border-red-500/30 rounded-lg flex items-center justify-center group-hover:border-red-500 transition-all duration-300">
+                <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
+              </div>
+              <span className="hidden lg:block font-bold text-sm md:text-base">BACK TO DASHBOARD</span>
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-3">
+            <AccentButton
+              onClick={() => signOut()}
+              size="sm"
+              className="px-2 py-1 md:px-4 md:py-2"
+            >
+              <Settings className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden md:block ml-2 text-xs md:text-sm font-bold">LOGOUT</span>
+            </AccentButton>
+          </div>
+        </div>
+
+        {/* Content Container */}
+        <div className="relative z-10 h-screen overflow-y-auto px-4 md:px-6 py-16 md:py-20">
+          {/* Profile Header Component */}
+          <div className="max-w-5xl mx-auto mb-6 lg:mb-8">
+            <ProfileHeaderNew
+              profileData={profileData}
+              gameStats={gameStats}
+              onAvatarUpload={handleAvatarUpload}
+              isUploadingAvatar={isUploadingAvatar}
+            />
+          </div>
+
+          {/* Main Content */}
+          <div className="max-w-5xl mx-auto">
+            {renderActiveSection()}
+          </div>
         </div>
       </div>
     </div>
