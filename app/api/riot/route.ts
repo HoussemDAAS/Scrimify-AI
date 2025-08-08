@@ -68,12 +68,7 @@ const RIOT_ENDPOINTS = {
     `https://${routingRegion}.api.riotgames.com/lol/match/v5/matches/${matchId}`
 }
 
-// --- Helper Functions ---
 
-/**
- * A robust helper to make secure, server-side calls to the Riot API.
- * Includes improved error handling.
- */
 async function riotApiCall(url: string) {
   if (!RIOT_API_KEY) {
     throw new Error('Riot API key not configured on the server.')
@@ -84,8 +79,7 @@ async function riotApiCall(url: string) {
     headers: {
       'X-Riot-Token': RIOT_API_KEY,
     },
-    // Use Next.js caching to avoid hitting rate limits for repeated requests.
-    // This caches the data for 10 minutes.
+
     next: { revalidate: 600 } 
   })
   
@@ -238,12 +232,12 @@ async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
                         avgTeamRanks.push(rankEstimate);
                     }
                     
-                    // Small delay between individual match requests
-                    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+               
+                    await new Promise(resolve => setTimeout(resolve, 100));
                     
                 } catch (error) {
                     
-                    // Continue with other matches
+                     
                 }
             }
         }

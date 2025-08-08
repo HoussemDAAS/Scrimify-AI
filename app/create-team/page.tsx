@@ -57,7 +57,7 @@ function CreateTeamContent() {
     rank_requirement: '',
     max_members: 5,
     practice_schedule: '',
-    // LoL-specific fields
+
     playstyle: '',
     primary_goal: '',
     communication_style: '',

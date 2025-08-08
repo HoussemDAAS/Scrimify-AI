@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
 import { getUserByClerkId, supabaseAdmin } from '@/lib/supabase'
 
-// GET: Get chat messages for a match
+
 export async function GET(request: NextRequest) {
   try {
     const { userId: clerkId } = getAuth(request)
