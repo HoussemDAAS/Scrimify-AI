@@ -83,22 +83,11 @@ export default function NotificationDropdown({ clerkId }: NotificationDropdownPr
             <div className="p-4 border-b border-red-500/20">
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-bold text-sm">Notifications</h3>
-                <div className="flex items-center gap-2">
-                  {unreadCount > 0 && (
-                    <Badge className="bg-red-600 text-white text-xs">
-                      {unreadCount} pending
-                    </Badge>
-                  )}
-                  <button 
-                    onClick={() => {
-                      console.log('🔄 Manual refresh triggered')
-                      window.location.href = '/api/debug-match-requests'
-                    }}
-                    className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded border border-gray-600 hover:border-gray-500"
-                  >
-                    Debug
-                  </button>
-                </div>
+                {unreadCount > 0 && (
+                  <Badge className="bg-red-600 text-white text-xs">
+                    {unreadCount} pending
+                  </Badge>
+                )}
               </div>
             </div>
 

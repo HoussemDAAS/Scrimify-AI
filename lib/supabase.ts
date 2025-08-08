@@ -133,7 +133,7 @@ export async function updateUserProfile(clerkId: string, updates: Partial<User>)
       data.selected_game = normalizeGamesToArray(data.selected_game)
     }
     
-    console.log('✅ Updated user profile:', data.username)
+
     return data
   } catch (error) {
     console.error('❌ Error in updateUserProfile:', error)

@@ -118,9 +118,13 @@ export default function MatchesPage() {
       
       if (data.success) {
         setChatMessages(data.messages)
+      } else {
+        console.error('Failed to load chat messages:', data.error)
+        setChatMessages([])
       }
     } catch (error) {
       console.error('Error loading chat messages:', error)
+      setChatMessages([])
     }
   }
 
@@ -144,6 +148,7 @@ export default function MatchesPage() {
         setChatMessages(prev => [...prev, data.message])
         setNewMessage('')
       } else {
+        console.error('Failed to send message:', data.error)
         alert('Failed to send message: ' + data.error)
       }
     } catch (error) {

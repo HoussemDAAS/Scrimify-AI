@@ -53,18 +53,11 @@ export function useTeamNotifications(clerkId: string) {
       }
       
       // Get pending match requests
-      console.log('🔔 Loading pending match requests for user:', clerkId)
       const pendingMatchRequests = await getPendingMatchRequests(clerkId)
-      console.log('📨 Pending match requests found:', pendingMatchRequests.length)
-      console.log('📋 Match requests details:', pendingMatchRequests)
       
       setNotifications(allRequests)
       setMatchRequests(pendingMatchRequests)
       setUnreadCount(allRequests.length + pendingMatchRequests.length)
-      
-      console.log('🔢 Total notifications:', allRequests.length)
-      console.log('🎮 Total match requests:', pendingMatchRequests.length)
-      console.log('📊 Total unread count:', allRequests.length + pendingMatchRequests.length)
     } catch (error) {
       console.error('Error loading notifications:', error)
       setNotifications([])

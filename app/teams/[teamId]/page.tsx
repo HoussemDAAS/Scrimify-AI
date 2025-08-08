@@ -10,7 +10,6 @@ import { PrimaryButton } from '@/components/ui/primary-button'
 import { SecondaryButton } from '@/components/ui/secondary-button'
 import { 
   Users, 
-  MapPin, 
   Trophy, 
   Clock, 
   Calendar,
@@ -26,7 +25,6 @@ import {
 } from 'lucide-react'
 import { getTeamById, getTeamMembers, getTeamMatchHistory, Team } from '@/lib/supabase'
 import Link from 'next/link'
-import Image from 'next/image'
 
 interface TeamMember {
   id: string
@@ -158,7 +156,7 @@ export default function TeamViewPage() {
   }
 
   if (error || !team) {
-    return (
+  return (
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
@@ -184,12 +182,12 @@ export default function TeamViewPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/dashboard">
+            <Link href="/dashboard">
             <SecondaryButton size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
-            </SecondaryButton>
-          </Link>
+              </SecondaryButton>
+            </Link>
           <h1 className="text-3xl font-bold text-white">Team Profile</h1>
         </div>
 

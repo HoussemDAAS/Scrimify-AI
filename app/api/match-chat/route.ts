@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
-import { getUserByClerkId, supabase } from '@/lib/supabase'
+import { getUserByClerkId, supabaseAdmin } from '@/lib/supabase'
 
 // GET: Get chat messages for a match
 export async function GET(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify user is part of this match
-    const { data: matchRequest, error: matchError } = await supabase
+    const { data: matchRequest, error: matchError } = await supabaseAdmin
       .from('match_requests')
       .select('challenger_user_id, opponent_user_id, status')
       .eq('id', matchRequestId)
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get chat messages
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages, error: messagesError } = await supabaseAdmin
       .from('match_chat')
       .select(`
         *,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user is part of this match and it's accepted
-    const { data: matchRequest, error: matchError } = await supabase
+    const { data: matchRequest, error: matchError } = await supabaseAdmin
       .from('match_requests')
       .select('challenger_user_id, opponent_user_id, status')
       .eq('id', matchRequestId)
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send the message
-    const { data: newMessage, error: sendError } = await supabase
+    const { data: newMessage, error: sendError } = await supabaseAdmin
       .from('match_chat')
       .insert([{
         match_request_id: matchRequestId,

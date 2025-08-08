@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
-import { getUserByClerkId, supabase } from '@/lib/supabase'
+import { getUserByClerkId, supabaseAdmin } from '@/lib/supabase'
 
 // POST: Create a new match request
 export async function POST(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get opponent team owner
-    const { data: opponentTeam, error: opponentError } = await supabase
+    const { data: opponentTeam, error: opponentError } = await supabaseAdmin
       .from('teams')
       .select('id, name, owner_id')
       .eq('id', opponentTeamId)
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get challenger team info and verify ownership
-    const { data: challengerTeam, error: challengerError } = await supabase
+    const { data: challengerTeam, error: challengerError } = await supabaseAdmin
       .from('teams')
       .select('id, name, owner_id')
       .eq('id', challengerTeamId)
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if there's already a pending request between these teams
-    const { data: existingRequest } = await supabase
+    const { data: existingRequest } = await supabaseAdmin
       .from('match_requests')
       .select('id')
       .eq('challenger_team_id', challengerTeamId)
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the match request
-    const { data: matchRequest, error: createError } = await supabase
+    const { data: matchRequest, error: createError } = await supabaseAdmin
       .from('match_requests')
       .insert([{
         challenger_team_id: challengerTeamId,
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('match_requests')
       .select(`
         *,
@@ -173,7 +173,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get the match request and verify authorization
-    let query = supabase
+    let query = supabaseAdmin
       .from('match_requests')
       .select('*')
       .eq('id', requestId)
@@ -199,7 +199,7 @@ export async function PUT(request: NextRequest) {
     if (action === 'accept') newStatus = 'accepted'
     else if (action === 'complete') newStatus = 'completed'
 
-    const { data: updatedRequest, error: updateError } = await supabase
+    const { data: updatedRequest, error: updateError } = await supabaseAdmin
       .from('match_requests')
       .update({ 
         status: newStatus,

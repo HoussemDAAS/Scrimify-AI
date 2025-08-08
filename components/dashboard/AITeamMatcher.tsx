@@ -184,35 +184,22 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
       return
     }
 
-    console.log('🎯 Sending challenge request...')
-    console.log('- Challenger Team ID:', selectedTeamId)
-    console.log('- Opponent Team ID:', recommendation.team.id)
-    console.log('- Match Type:', recommendation.challengeType)
-
     try {
       // Send match request
-      const requestBody = {
-        opponentTeamId: recommendation.team.id,
-        challengerTeamId: selectedTeamId,
-        message: `Ready for a ${recommendation.challengeType}? Let's see who wins!`,
-        matchType: recommendation.challengeType
-      }
-      
-      console.log('📤 Request payload:', requestBody)
-      
       const response = await fetch('/api/match-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          opponentTeamId: recommendation.team.id,
+          challengerTeamId: selectedTeamId,
+          message: `Ready for a ${recommendation.challengeType}? Let's see who wins!`,
+          matchType: recommendation.challengeType
+        })
       })
 
-      console.log('📥 Response status:', response.status)
       const data = await response.json()
-      console.log('📥 Response data:', data)
 
       if (data.success) {
-        console.log('✅ Challenge sent successfully!')
-        console.log('📋 Match request created:', data.matchRequest)
         alert(`Challenge sent to ${recommendation.team.name}! They'll receive a notification.`)
         
         // Track the challenge action for AI learning
@@ -228,11 +215,10 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
           })
         })
       } else {
-        console.error('❌ Challenge failed:', data.error)
         alert(`Failed to send challenge: ${data.error}`)
       }
     } catch (err) {
-      console.error('❌ Error sending challenge:', err)
+      console.error('Error sending challenge:', err)
       alert('Failed to send challenge. Please try again.')
     }
   }
