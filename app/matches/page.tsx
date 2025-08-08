@@ -14,7 +14,7 @@ import {
   Clock,
   Send,
   CheckCircle,
-  Gamepad2
+  
 } from 'lucide-react'
 
 interface MatchRequest {
@@ -206,7 +206,7 @@ export default function MatchesPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
-          <Gamepad2 className="w-8 h-8 text-red-500" />
+          <MessageSquare className="w-8 h-8 text-red-500" />
           Active Matches
         </h1>
 

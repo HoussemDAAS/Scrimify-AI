@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { User, Crown, Shield, Trophy, Target, Star, LogOut, Gamepad2, Menu, X } from 'lucide-react'
+import { User, Crown, Shield, Trophy, Target, Star, LogOut, MessageSquare } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 
 interface UserProfile {
@@ -31,20 +31,6 @@ interface DashboardHeaderProps {
 }
 
 export default function DashboardHeader({ user, gameStats, clerkId, onSignOut }: DashboardHeaderProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  // Close mobile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMobileMenuOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const getCompetitiveLevelInfo = (level: string) => {
     switch (level) {
@@ -64,7 +50,7 @@ export default function DashboardHeader({ user, gameStats, clerkId, onSignOut }:
   const lolStats = gameStats?.['league-of-legends']
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       {/* Desktop Navigation */}
       <div className="hidden md:flex items-center gap-4">
         {/* Profile Section */}
@@ -129,7 +115,7 @@ export default function DashboardHeader({ user, gameStats, clerkId, onSignOut }:
           href="/matches" 
           className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors px-3 py-2 rounded-md hover:bg-red-500/10"
         >
-          <Gamepad2 className="w-4 h-4" />
+          <MessageSquare className="w-4 h-4" />
           <span className="text-sm font-medium">Matches</span>
         </Link>
 
@@ -178,78 +164,25 @@ export default function DashboardHeader({ user, gameStats, clerkId, onSignOut }:
         {/* Notifications */}
         <NotificationDropdown clerkId={clerkId} />
 
-        {/* Hamburger Menu Button */}
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        {/* Matches (mobile) */}
+        <Link
+          href="/matches"
           className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-400 transition-colors rounded-md hover:bg-red-500/10"
+          aria-label="Matches"
         >
-          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <MessageSquare className="w-5 h-5" />
+        </Link>
+
+        {/* Logout Button (mobile) */}
+        <button
+          onClick={onSignOut}
+          className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-400 transition-colors rounded-md hover:bg-red-500/10"
+          aria-label="Logout"
+        >
+          <LogOut className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Mobile Menu Dropdown */}
-      {isMobileMenuOpen && (
-        <div className="absolute top-12 right-0 z-50 w-64 bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg shadow-2xl md:hidden">
-          <div className="p-4 space-y-4">
-            {/* User Info */}
-            <div className="pb-3 border-b border-gray-700">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-white font-medium text-sm">{user.username}</span>
-                {user.riot_account_verified && (
-                  <Shield className="w-3 h-3 text-green-400" />
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span>{levelInfo.label}</span>
-                {lolStats?.rank && (
-                  <>
-                    <span>•</span>
-                    <span className="text-yellow-400">{lolStats.rank}</span>
-                  </>
-                )}
-                {user.looking_for_team && (
-                  <>
-                    <span>•</span>
-                    <span className="text-green-400">LFT</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Navigation Links */}
-            <div className="space-y-2">
-              <Link 
-                href="/matches"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 text-gray-400 hover:text-red-400 transition-colors p-2 rounded-md hover:bg-red-500/10"
-              >
-                <Gamepad2 className="w-4 h-4" />
-                <span className="text-sm font-medium">Matches</span>
-              </Link>
-
-              <Link 
-                href="/profile"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 text-gray-400 hover:text-red-400 transition-colors p-2 rounded-md hover:bg-red-500/10"
-              >
-                <User className="w-4 h-4" />
-                <span className="text-sm font-medium">Profile</span>
-              </Link>
-
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false)
-                  onSignOut()
-                }}
-                className="flex items-center gap-3 text-gray-400 hover:text-red-400 transition-colors p-2 rounded-md hover:bg-red-500/10 w-full text-left"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm font-medium">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
