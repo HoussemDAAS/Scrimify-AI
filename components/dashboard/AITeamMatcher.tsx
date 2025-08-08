@@ -117,10 +117,14 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
   // Render no teams state
   if (userTeams.length === 0 && !loading) {
     return (
-      <Card className="bg-gradient-to-br from-gray-900 to-black border-red-500/30">
+      <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-br from-red-600/20 to-red-800/20 rounded-2xl flex items-center justify-center">
-            <Users className="w-8 h-8 text-red-500" />
+          <div className="mx-auto mb-4 w-16 h-16 rounded-2xl flex items-center justify-center relative">
+            <div className="absolute inset-0 border-4 border-red-500/30 rounded-2xl animate-spin-slow" />
+            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
+              <Users className="w-8 h-8 text-white" />
+            </div>
           </div>
           <CardTitle className="text-xl font-bold text-white">No Teams Found</CardTitle>
           <CardDescription className="text-gray-400">
@@ -138,7 +142,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
             </PrimaryButton>
             <SecondaryButton 
               onClick={() => window.location.href = '/join-team'}
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="border-gray-700 text-gray-300 hover:bg-red-500/10"
             >
               <Target className="mr-2 h-4 w-4" />
               Join a Team
@@ -237,7 +241,8 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
 
   if (loading) {
     return (
-      <Card className="bg-gradient-to-br from-gray-950 via-gray-900 to-black border-gray-800">
+      <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2">
             <Target className="w-5 h-5 text-red-500" />
@@ -251,7 +256,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="animate-pulse">
-                <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gray-700 rounded-lg"></div>
                     <div className="flex-1">
@@ -270,7 +275,8 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
 
   if (error) {
     return (
-      <Card className="bg-gradient-to-br from-gray-950 via-gray-900 to-black border-gray-800">
+      <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
         <CardHeader>
           <div className="flex items-center gap-2">
             <Target className="w-5 h-5 text-red-500" />
@@ -282,7 +288,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
             <p className="text-red-400 mb-4">{error}</p>
             <SecondaryButton 
               onClick={fetchRecommendations}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="border-gray-700 text-gray-300 hover:bg-red-500/10"
             >
               Try Again
             </SecondaryButton>
@@ -294,7 +300,8 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
 
   if (recommendations.length === 0 && userTeams.length > 0 && !loading) {
     return (
-      <Card className="bg-gradient-to-br from-gray-950 via-gray-900 to-black border-gray-800">
+      <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
         <CardHeader>
           <div className="flex items-center gap-2">
             <Target className="w-5 h-5 text-red-500" />
@@ -328,7 +335,8 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
   }
 
   return (
-    <Card className="bg-gradient-to-br from-gray-950 via-gray-900 to-black border-gray-800">
+    <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30 hover:border-red-500/50 transition-all duration-500">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
       <CardHeader className="pb-4">
         <div className="flex items-center gap-2">
           <Target className="w-5 h-5 text-red-500" />
@@ -381,7 +389,7 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
           {recommendations.map((recommendation) => (
             <div
               key={recommendation.team.id}
-              className="group bg-gradient-to-r from-gray-900/60 to-gray-800/60 border border-gray-700 rounded-lg p-4 hover:from-gray-800/80 hover:to-gray-700/80 hover:border-red-500/30 transition-all duration-300 cursor-pointer hover:scale-105"
+              className="group bg-gradient-to-r from-gray-900/60 to-gray-800/60 border border-gray-700 rounded-lg p-4 hover:from-gray-800/80 hover:to-gray-700/80 hover:border-red-500/40 transition-all duration-300 cursor-pointer"
               onClick={() => handleTeamClick(recommendation)}
             >
               <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-3 gap-3">

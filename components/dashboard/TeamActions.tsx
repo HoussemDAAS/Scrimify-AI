@@ -30,7 +30,7 @@ export default function TeamActions({ currentGame, games }: TeamActionsProps) {
   if (!currentGame) return null
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto mb-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto mt-8 md:mt-12 mb-8">
       <div className="group relative">
         <div className="absolute -inset-4 md:-inset-6 bg-gradient-to-r from-red-600/15 to-red-800/15 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
         

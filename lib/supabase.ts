@@ -195,11 +195,12 @@ export async function getUserGameStatistics(userId: string, gameId: string): Pro
       .select('*')
       .eq('user_id', userId)
       .eq('game_id', gameId)
-      .single()
+      .maybeSingle()
     
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null // No statistics found
+      // For safety, return null on not found or not acceptable instead of throwing
+      if ((error as any).code === 'PGRST116' || (error as any).status === 406) {
+        return null
       }
       throw error
     }
