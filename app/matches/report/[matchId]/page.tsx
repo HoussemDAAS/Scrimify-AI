@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import DashboardBackground from '@/components/dashboard/DashboardBackground'
 import { useUser } from '@clerk/nextjs'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -166,11 +167,14 @@ export default function MatchReportPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center py-12">
-            <Clock className="w-12 h-12 text-gray-400 animate-pulse mx-auto mb-4" />
-            <p className="text-gray-400">Loading match data...</p>
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <DashboardBackground />
+        <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center py-12">
+              <Clock className="w-12 h-12 text-gray-400 animate-pulse mx-auto mb-4" />
+              <p className="text-gray-400">Loading match data...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -179,18 +183,21 @@ export default function MatchReportPage() {
 
   if (!match) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-        <div className="max-w-2xl mx-auto">
-          <Card className="bg-gray-900/50 border-gray-800">
-            <CardContent className="p-12 text-center">
-              <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Match Not Found</h3>
-              <p className="text-gray-400 mb-6">The match you're looking for doesn't exist or isn't completed.</p>
-              <SecondaryButton onClick={() => router.push('/matches')}>
-                Back to Matches
-              </SecondaryButton>
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <DashboardBackground />
+        <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
+          <div className="max-w-2xl mx-auto">
+            <Card className="bg-gray-900/50 border-gray-800">
+              <CardContent className="p-12 text-center">
+                <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Match Not Found</h3>
+                <p className="text-gray-400 mb-6">The match you're looking for doesn't exist or isn't completed.</p>
+                <SecondaryButton onClick={() => router.push('/matches')}>
+                  Back to Matches
+                </SecondaryButton>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     )
@@ -202,8 +209,9 @@ export default function MatchReportPage() {
   const isVerified = existingResult && existingResult.is_verified
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      <DashboardBackground />
+      <div className="relative z-10 max-w-2xl mx-auto px-4 md:px-0 py-20 md:py-32">
         {/* Back Button */}
         <div className="mb-6">
           <SecondaryButton onClick={() => router.push('/matches')} className="flex items-center gap-2">

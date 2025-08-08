@@ -37,7 +37,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized to view this chat' }, { status: 403 })
     }
 
-    if (matchRequest.status !== 'accepted') {
+    const normalizedStatus = (matchRequest.status || '').toString().trim().toLowerCase()
+    const chatAllowed = normalizedStatus === 'accepted' || normalizedStatus === 'completed'
+    if (!chatAllowed) {
       return NextResponse.json({ error: 'Match must be accepted to access chat' }, { status: 400 })
     }
 
@@ -103,7 +105,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized to send messages in this chat' }, { status: 403 })
     }
 
-    if (matchRequest.status !== 'accepted') {
+    const normalizedStatus = (matchRequest.status || '').toString().trim().toLowerCase()
+    const chatAllowed = normalizedStatus === 'accepted' || normalizedStatus === 'completed'
+    if (!chatAllowed) {
       return NextResponse.json({ error: 'Match must be accepted to send messages' }, { status: 400 })
     }
 

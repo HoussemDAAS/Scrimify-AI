@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import DashboardBackground from '@/components/dashboard/DashboardBackground'
 import { useParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -143,9 +144,10 @@ export default function TeamViewPage() {
   }
 
   if (isLoading) {
-  return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-        <div className="max-w-6xl mx-auto">
+    return (
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <DashboardBackground />
+        <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
           <div className="text-center py-12">
             <Activity className="w-12 h-12 text-red-400 animate-pulse mx-auto mb-4" />
             <p className="text-gray-400">Loading team details...</p>
@@ -156,14 +158,15 @@ export default function TeamViewPage() {
   }
 
   if (error || !team) {
-  return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-        <div className="max-w-6xl mx-auto">
+    return (
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <DashboardBackground />
+        <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
           <div className="text-center py-12">
             <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Team Not Found</h3>
             <p className="text-gray-400 mb-6">
-              {error || 'The team you\'re looking for doesn\'t exist or has been removed.'}
+              {error || "The team you're looking for doesn't exist or has been removed."}
             </p>
             <Link href="/dashboard">
               <SecondaryButton>
@@ -178,8 +181,9 @@ export default function TeamViewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      <DashboardBackground />
+      <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
             <Link href="/dashboard">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import DashboardBackground from '@/components/dashboard/DashboardBackground'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -163,35 +164,7 @@ export default function GameSelectionPage() {
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Gaming Grid Background */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="grid grid-cols-8 md:grid-cols-12 gap-2 md:gap-4 h-full">
-          {Array.from({ length: 96 }).map((_, i) => (
-            <div key={i} className="border border-red-500/20"></div>
-          ))}
-        </div>
-      </div>
-
-      {/* Enhanced Red Glowing Effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-20 left-20 w-40 h-40 bg-red-600/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-60 right-32 w-48 h-48 bg-red-500/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-32 left-1/3 w-44 h-44 bg-red-700/20 rounded-full blur-3xl animate-pulse delay-500"></div>
-        
-        {/* Floating elements */}
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-red-500/40 rounded-full animate-ping"
-            style={{
-              left: `${15 + (i * 10)}%`,
-              top: `${20 + (i * 8)}%`,
-              animationDelay: `${i * 0.8}s`,
-              animationDuration: '4s'
-            }}
-          />
-        ))}
-      </div>
+      <DashboardBackground />
 
       <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
         {/* Header - Updated for Multi-Selection */}

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { PrimaryButton } from '@/components/ui/primary-button'
 import { SecondaryButton } from '@/components/ui/secondary-button'
 import { Input } from '@/components/ui/input'
+import DashboardBackground from '@/components/dashboard/DashboardBackground'
 import { 
   MessageSquare, 
   Users, 
@@ -190,28 +191,37 @@ export default function MatchesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-8">Active Matches</h1>
-          <div className="text-center py-12">
-            <Clock className="w-12 h-12 text-gray-400 animate-pulse mx-auto mb-4" />
-            <p className="text-gray-400">Loading matches...</p>
-          </div>
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <DashboardBackground />
+        <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
+          <h1 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
+            <MessageSquare className="w-8 h-8 text-red-500" />
+            Active Matches
+          </h1>
+          <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
+            <CardContent className="text-center py-12">
+              <Clock className="w-12 h-12 text-gray-400 animate-pulse mx-auto mb-4" />
+              <p className="text-gray-400">Loading matches...</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      <DashboardBackground />
+      <div className="relative z-10 container mx-auto px-4 md:px-6 py-20 md:py-32">
         <h1 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
           <MessageSquare className="w-8 h-8 text-red-500" />
           Active Matches
         </h1>
 
         {matches.length === 0 ? (
-          <Card className="bg-gray-900/50 border-gray-800">
+          <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
             <CardContent className="p-12 text-center">
               <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-white mb-2">No Active Matches</h3>
@@ -227,7 +237,8 @@ export default function MatchesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Match List */}
             <div className="lg:col-span-1">
-              <Card className="bg-gray-900/50 border-gray-800">
+              <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Users className="w-5 h-5" />
@@ -241,7 +252,7 @@ export default function MatchesPage() {
                         key={match.id}
                         className={`p-4 cursor-pointer transition-colors ${
                           selectedMatch?.id === match.id
-                            ? 'bg-red-500/20 border-r-2 border-red-500'
+                            ? 'bg-red-500/10 border-l-2 border-red-500'
                             : 'hover:bg-gray-800/50'
                         }`}
                         onClick={() => setSelectedMatch(match)}
@@ -279,7 +290,8 @@ export default function MatchesPage() {
               {selectedMatch ? (
                 <div className="space-y-6">
                   {/* Match Header */}
-                  <Card className="bg-gray-900/50 border-gray-800">
+                  <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
@@ -313,7 +325,8 @@ export default function MatchesPage() {
                   </Card>
 
                   {/* Chat Section */}
-                  <Card className="bg-gray-900/50 border-gray-800">
+                  <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
                     <CardHeader>
                       <CardTitle className="text-white flex items-center gap-2">
                         <MessageSquare className="w-5 h-5 text-blue-500" />
@@ -321,8 +334,7 @@ export default function MatchesPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {/* Messages */}
-                      <div className="bg-black/30 rounded-lg p-4 h-64 overflow-y-auto mb-4 space-y-3">
+                      <div className="bg-black/30 rounded-lg p-4 h-64 overflow-y-auto mb-4 space-y-3 border border-gray-800">
                         {chatMessages.length === 0 ? (
                           <div className="text-center text-gray-500 py-8">
                             <MessageSquare className="w-8 h-8 mx-auto mb-2" />
@@ -348,7 +360,6 @@ export default function MatchesPage() {
                         )}
                       </div>
 
-                      {/* Message Input */}
                       <div className="flex gap-2">
                         <Input
                           value={newMessage}
@@ -374,7 +385,8 @@ export default function MatchesPage() {
                   </Card>
                 </div>
               ) : (
-                <Card className="bg-gray-900/50 border-gray-800">
+                <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
                   <CardContent className="p-12 text-center">
                     <MessageSquare className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-white mb-2">Select a Match</h3>

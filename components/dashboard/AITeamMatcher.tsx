@@ -23,7 +23,6 @@ interface AITeamRecommendation {
     max_members: number
     rank_requirement?: string
     logo_url?: string
-    // LoL-specific fields
     playstyle?: string
     primary_goal?: string
     communication_style?: string
@@ -56,14 +55,12 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load user teams
   const loadUserTeams = useCallback(async () => {
     if (!user) return
     
     try {
       const teams = await getUserTeamsForGame(user.id, currentGame)
       setUserTeams(teams)
-      // Auto-select first team
       if (teams.length > 0 && !selectedTeamId) {
         setSelectedTeamId(teams[0].teams.id)
       }
@@ -73,8 +70,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
   }, [user, currentGame, selectedTeamId])
 
   const fetchRecommendations = useCallback(async () => {
-    // Always try to fetch recommendations - the API will handle users with no teams
-    // (showing teams they can join instead of teams to play against)
 
     try {
       setLoading(true)
@@ -114,7 +109,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
     }
   }, [user, currentGame, selectedTeamId, userTeams.length, fetchRecommendations])
 
-  // Render no teams state
   if (userTeams.length === 0 && !loading) {
     return (
       <Card className="relative bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-lg border-2 border-red-500/30">
@@ -155,7 +149,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
 
   const handleTeamClick = async (recommendation: AITeamRecommendation) => {
     try {
-      // Track the interaction
       await fetch('/api/ai/team-recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -168,7 +161,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
         })
       })
 
-      // Navigate to team page (you can implement this based on your routing)
       window.open(`/teams/${recommendation.team.id}`, '_blank')
     } catch (err) {
       console.error('Error tracking team click:', err)
@@ -182,7 +174,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
     }
 
     try {
-      // Send match request
       const response = await fetch('/api/match-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,7 +190,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
       if (data.success) {
         alert(`Challenge sent to ${recommendation.team.name}! They'll receive a notification.`)
         
-        // Track the challenge action for AI learning
         await fetch('/api/ai/team-recommendations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -346,8 +336,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
           Perfect opponents found for your team
         </CardDescription>
         
-        
-        {/* Team Selector */}
         {userTeams.length > 1 && (
           <div className="mt-4 w-full">
             <label className="text-sm text-gray-300 mb-2 block font-medium">
@@ -375,7 +363,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
           </div>
         )}
         
-        {/* Single team info */}
         {userTeams.length === 1 && (
           <div className="mt-4 p-3 bg-gray-800/30 rounded-lg border border-gray-700">
             <p className="text-sm text-gray-300">
@@ -416,7 +403,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
                         </>
                       )}
                     </div>
-                    {/* LoL-specific badges */}
                     <div className="flex flex-wrap gap-1 mt-2">
                       {recommendation.team.playstyle && (
                         <Badge variant="outline" className="bg-gray-600/20 text-gray-300 border-gray-500/30 text-xs">
@@ -456,7 +442,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
                 {recommendation.reason}
               </p>
 
-              {/* Compatibility Factors - AI Analysis Breakdown */}
               <div className="mb-3 p-3 bg-gray-800/30 rounded-lg border border-gray-700">
                 <h4 className="text-xs font-semibold text-purple-300 mb-2">🧠 AI COMPATIBILITY ANALYSIS</h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
