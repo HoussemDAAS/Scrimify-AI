@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log('💾 Saving game statistics via API for Clerk user:', clerkUserId)
+    
     
     // Get the internal database user ID from Clerk ID
     const userData = await getUserByClerkId(clerkUserId)
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log('💾 Using internal database user ID:', userData.id)
+    
     
     // Ensure current_rank is always present as it's required
     const safeStats = {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       last_updated: new Date().toISOString()
     }
     
-    console.log('📊 Final statistics data to save:', statisticsData)
+    
     
     // Save the statistics using direct supabase client
     const { data, error } = await supabase
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
     
-    console.log('✅ Game statistics saved successfully:', data)
+    
     
     return NextResponse.json({ 
       success: true, 

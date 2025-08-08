@@ -83,13 +83,13 @@ export default function GameSelectionPage() {
       if (!user) return
 
       try {
-        console.log('Checking user:', user.id)
+        
         
         // Check if user exists in Supabase
         const existingUser = await getUserByClerkId(user.id)
         
         if (!existingUser) {
-          console.log('User not found, creating new user')
+          
           // Create new user in Supabase
           await createUser({
             clerk_id: user.id,
@@ -98,7 +98,7 @@ export default function GameSelectionPage() {
           })
           setSelectedGames([])
         } else {
-          console.log('Existing user found:', existingUser)
+          
           // Set existing selected games - handle both array and string formats
           const games = Array.isArray(existingUser.selected_game) 
             ? existingUser.selected_game 

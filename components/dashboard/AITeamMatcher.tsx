@@ -75,10 +75,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
   const fetchRecommendations = useCallback(async () => {
     // Always try to fetch recommendations - the API will handle users with no teams
     // (showing teams they can join instead of teams to play against)
-    console.log('AITeamMatcher: fetchRecommendations called')
-    console.log('- currentGame:', currentGame)
-    console.log('- selectedTeamId:', selectedTeamId)
-    console.log('- userTeams.length:', userTeams.length)
 
     try {
       setLoading(true)
@@ -95,9 +91,6 @@ export function AITeamMatcher({ currentGame }: AITeamMatcherProps) {
       }
 
       const data = await response.json()
-      console.log('AITeamMatcher: API Response received')
-      console.log('- Response data:', data)
-      console.log('- Recommendations count:', data.recommendations?.length)
       setRecommendations(data.recommendations || [])
     } catch (err) {
       console.error('Error fetching AI recommendations:', err)

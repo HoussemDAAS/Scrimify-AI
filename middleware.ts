@@ -48,7 +48,6 @@ async function getUserOnboardingStatus(userId: string) {
     const normalizedGames = normalizeGamesToArray(user.selected_game)
     const hasGames = normalizedGames.length > 0
     
-    console.log(`User ${userId} - Games:`, normalizedGames, `- HasGames: ${hasGames}`)
     
     return { 
       hasGames, 

@@ -1,6 +1,6 @@
 export default function TestPage() {
   const testAI = async () => {
-    console.log('🚀 Testing AI Recommendations Endpoint...\n');
+    
     
     try {
       const response = await fetch('/api/ai/team-recommendations?game=League+of+Legends&limit=5', {
@@ -10,8 +10,7 @@ export default function TestPage() {
         },
       });
 
-      console.log('📡 Response Status:', response.status);
-      console.log('📡 Response OK:', response.ok);
+      
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -20,17 +19,11 @@ export default function TestPage() {
       }
 
       const data = await response.json();
-      console.log('\n📦 Response Data:', data);
       
       if (data.recommendations && data.recommendations.length > 0) {
-        console.log('\n🎯 Sample Recommendation:');
         const first = data.recommendations[0];
-        console.log('- Team Name:', first.team?.name);
-        console.log('- Score:', first.score);
-        console.log('- Reason:', first.reason);
       } else {
-        console.log('\n❌ No recommendations returned');
-        console.log('Full response:', JSON.stringify(data, null, 2));
+        
       }
 
     } catch (error) {

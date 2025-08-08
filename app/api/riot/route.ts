@@ -79,7 +79,6 @@ async function riotApiCall(url: string) {
     throw new Error('Riot API key not configured on the server.')
   }
 
-  console.log('Making Riot API call to:', url)
 
   const response = await fetch(url, {
     headers: {
@@ -135,13 +134,12 @@ function getRegionalRouting(region: string) {
  */
 async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
     try {
-        console.log('🔍 Fetching enhanced match history for detailed stats...')
+        
         
         // Fetch more matches for better analysis (up to 100)
         const matchIds: string[] = await riotApiCall(RIOT_ENDPOINTS.lolMatchIds(routingRegion, puuid, 100));
 
         if (matchIds.length === 0) {
-            console.log('⚠️ No match history found')
             return {
                 winRate: '0%',
                 mainRole: 'Unknown',
@@ -163,7 +161,7 @@ async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
         let totalKDA = 0;
         let kdaCount = 0;
 
-        console.log(`📊 Analyzing up to ${Math.min(50, matchIds.length)} recent matches for ranked data...`)
+        
 
         // Process fewer matches and add longer delays to avoid rate limits
         const batchSize = 5; // Reduced batch size
@@ -173,11 +171,11 @@ async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
             const batchEnd = Math.min(batchStart + batchSize, Math.min(maxMatches, matchIds.length));
             const batchIds = matchIds.slice(batchStart, batchEnd);
             
-            console.log(`🔄 Processing batch ${Math.floor(batchStart/batchSize) + 1}: matches ${batchStart + 1}-${batchEnd}`)
+            
             
             // Add longer delay between batches to respect rate limits
             if (batchStart > 0) {
-                console.log('⏳ Waiting 2 seconds to respect rate limits...')
+                
                 await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
             }
             
@@ -196,7 +194,7 @@ async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
                     const isRankedFlex = match.info.queueId === 440; // Ranked Flex
                     const isRanked = isRankedSolo || isRankedFlex;
                     
-                    console.log(`🎮 Match ${totalGamesAnalyzed}: Queue ${match.info.queueId} (${isRanked ? 'RANKED' : 'Normal'}) - ${participant.win ? 'WIN' : 'LOSS'}`)
+                    
                     
                     if (isRanked) {
                         rankedGamesAnalyzed++;
@@ -244,15 +242,13 @@ async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
                     await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
                     
                 } catch (error) {
-                    console.log(`⚠️ Failed to fetch match ${matchId}:`, error);
+                    
                     // Continue with other matches
                 }
             }
         }
 
-        console.log(`✅ Analysis complete: ${rankedGamesAnalyzed} ranked games out of ${totalGamesAnalyzed} total games analyzed`)
-        console.log(`📊 Ranked record: ${wins}W ${losses}L`)
-        console.log(`🎯 Role distribution:`, roleCounts)
+        
 
         const rankedWinRate = rankedGamesAnalyzed > 0 ? Math.round((wins / rankedGamesAnalyzed) * 100) : 0;
         
@@ -277,7 +273,7 @@ async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
             const avgRankScore = avgTeamRanks.reduce((a, b) => a + b, 0) / avgTeamRanks.length;
             const avgKDA = kdaCount > 0 ? totalKDA / kdaCount : 0;
             
-            console.log(`🎯 Rank estimation: avgScore=${avgRankScore.toFixed(2)}, avgKDA=${avgKDA.toFixed(2)}, winRate=${rankedWinRate}%`)
+            
             
             // Rank estimation logic
             if (avgRankScore >= 4 && avgKDA >= 2.5 && rankedWinRate >= 60) {
@@ -304,7 +300,7 @@ async function getLolMatchHistoryStats(puuid: string, routingRegion: string) {
             estimatedRank: estimatedRank
         };
 
-        console.log(`🎉 Final ranked stats: ${rankedWinRate}% WR, ${mainRole} main role, ${rankedGamesAnalyzed} ranked games, ${estimatedRank}`)
+        
 
         return result;
     } catch (error) {
@@ -333,7 +329,6 @@ export async function GET(request: NextRequest) {
     const tagLine = searchParams.get('tagLine')
     const region = searchParams.get('region') || 'americas'
     
-    console.log(`🔍 Verifying Riot account: ${gameName}#${tagLine} in region: ${region}`)
     
     if (!gameName || !tagLine) {
       return NextResponse.json({ error: 'Game name and tag line are required' }, { status: 400 });
@@ -348,7 +343,6 @@ export async function GET(request: NextRequest) {
       RIOT_ENDPOINTS.accountByNameTag(routing.account, gameName, tagLine)
     );
     
-    console.log('✅ Account verification successful:', accountData.gameName, accountData.tagLine)
     
     return NextResponse.json({
       success: true,
@@ -373,7 +367,7 @@ export async function POST(request: NextRequest) {
   try {
     const { puuid, games, region = 'americas' } = await request.json();
     
-    console.log(`📊 Fetching enhanced game stats for PUUID: ${puuid}, games: ${games}, region: ${region}`)
+    
     
     if (!puuid || !Array.isArray(games)) {
       return NextResponse.json({ error: 'PUUID and a "games" array are required' }, { status: 400 });
@@ -389,17 +383,17 @@ export async function POST(request: NextRequest) {
     // --- Handle League of Legends (Now with real stats!) ---
     if (games.includes('league-of-legends')) {
       try {
-        console.log('🎮 Fetching League of Legends data with match history analysis...')
+        
         
         // First get the summoner data
         const summonerData = await riotApiCall(
           RIOT_ENDPOINTS.lolSummoner(routing.lolPlatform, puuid)
         );
 
-        console.log('✅ Summoner data received:', JSON.stringify(summonerData, null, 2))
+        
         
         // The summoner response should have an 'id' field, but let's check all available fields
-        console.log('🔍 Available summoner fields:', Object.keys(summonerData))
+        
         
         // Try to find the summoner ID field (could be 'id', 'summonerId', or 'accountId')
         const summonerId = summonerData.id || summonerData.summonerId || summonerData.accountId;
@@ -407,7 +401,7 @@ export async function POST(request: NextRequest) {
         if (!summonerId) {
           console.error('❌ No summoner ID found in any expected field:', summonerData)
           // Try to continue with match history only
-          console.log('⚠️ Attempting to fetch match history without rank data...')
+          
           
           const historyStats = await getLolMatchHistoryStats(puuid, routing.lolRouting);
           
@@ -427,29 +421,29 @@ export async function POST(request: NextRequest) {
             lastPlayed: historyStats.lastRankedMatch
           };
           
-          console.log('✅ League of Legends stats created with match history only')
+          
         } else {
           console.log('✅ Found summoner ID:', summonerId)
           
           // Get match history stats with better rate limiting
-          console.log('⏳ Waiting 1 second before fetching match history...')
+          
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           const historyStats = await getLolMatchHistoryStats(puuid, routing.lolRouting);
-          console.log('✅ History stats received:', JSON.stringify(historyStats, null, 2))
+          
           
           // Get rank data with delay to avoid rate limiting
-          console.log('⏳ Waiting 1 second before fetching rank data...')
+          
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           const rankData: LoLQueueData[] = await riotApiCall(
             RIOT_ENDPOINTS.lolRank(routing.lolPlatform, summonerId)
           );
           
-          console.log('✅ Raw rank data received:', JSON.stringify(rankData, null, 2))
+          
           
           const soloQueue = rankData.find(q => q.queueType === 'RANKED_SOLO_5x5');
-          console.log('🔍 Solo queue data found:', soloQueue)
+          
           
           if (soloQueue) {
             stats['league-of-legends'] = {
@@ -468,10 +462,9 @@ export async function POST(request: NextRequest) {
               totalMatches: 'totalMatches' in historyStats ? historyStats.totalMatches : undefined,
               lastPlayed: historyStats.lastRankedMatch,
             };
-            console.log('✅ League of Legends enhanced stats created successfully')
+            
           } else {
-            console.log('⚠️ No solo queue data found - using estimated rank from match history...')
-            console.log('⚠️ Available queue types:', rankData.map(q => q.queueType))
+            
             stats['league-of-legends'] = { 
               // Profile information from summoner data
               profileIcon: `https://ddragon.leagueoflegends.com/cdn/14.16.1/img/profileicon/${summonerData.profileIconId}.png`,
@@ -486,7 +479,7 @@ export async function POST(request: NextRequest) {
               totalMatches: 'totalMatches' in historyStats ? historyStats.totalMatches : undefined,
               lastPlayed: historyStats.lastRankedMatch
             };
-            console.log('✅ League of Legends player using estimated rank from performance')
+            
           }
         }
       } catch (error) {
@@ -495,20 +488,20 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    console.log('🎉 Enhanced stats generation completed')
+    
     
     // Store statistics persistently if user ID is provided
     const clerkUserId = request.nextUrl.searchParams.get('userId')
     if (clerkUserId) {
       try {
-        console.log('💾 Storing game statistics for Clerk user:', clerkUserId)
+        
         
         // Get the internal database user ID from Clerk ID
         const userData = await getUserByClerkId(clerkUserId)
         if (!userData) {
-          console.log('⚠️ User not found in database for Clerk ID:', clerkUserId)
+          
         } else {
-          console.log('💾 Using internal database user ID:', userData.id)
+          
           
           // Store League of Legends statistics
           if (stats['league-of-legends'] && !stats['league-of-legends'].error) {
@@ -532,7 +525,7 @@ export async function POST(request: NextRequest) {
                 topChampions: JSON.stringify(lolStats.topChampions || [])
               }
             })
-            console.log('✅ League of Legends statistics stored')
+            
           }
         }
         

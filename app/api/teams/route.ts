@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
     
     // Debug: Show unique game names
     const uniqueGames = [...new Set(teams?.map(t => t.game) || [])]
-    console.log('🎮 Unique game names in database:', uniqueGames)
     
     return NextResponse.json({ 
       teams: teams || [],

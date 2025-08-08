@@ -61,7 +61,7 @@ export async function createUserFromClerk(clerkUser: {
   imageUrl?: string
 }): Promise<User> {
   try {
-    console.log('🆕 Creating user from Clerk data:', clerkUser.id)
+    
     
     const email = clerkUser.emailAddresses[0]?.emailAddress
     if (!email) {
@@ -95,7 +95,7 @@ export async function createUserFromClerk(clerkUser: {
       throw error
     }
     
-    console.log('✅ Created user:', data.username)
+    
     return data
   } catch (error) {
     console.error('❌ Error in createUserFromClerk:', error)
@@ -106,8 +106,7 @@ export async function createUserFromClerk(clerkUser: {
 // Enhanced function to update user profile with comprehensive data
 export async function updateUserProfile(clerkId: string, updates: Partial<User>): Promise<User> {
   try {
-    console.log('🔄 Updating user profile for:', clerkId)
-    console.log('📝 Updates:', updates)
+    
     
     // Remove fields that shouldn't be updated directly
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -148,7 +147,7 @@ export async function upsertUserGameStatistics(
   stats: Partial<Omit<UserGameStatistics, 'id' | 'user_id' | 'game_id' | 'created_at' | 'last_updated'>>
 ): Promise<UserGameStatistics> {
   try {
-    console.log('📊 Upserting game statistics for user:', userId, 'game:', gameId)
+    
     
     // Ensure current_rank is always present as it's required
     const safeStats = {
@@ -180,7 +179,7 @@ export async function upsertUserGameStatistics(
       throw new Error(`Database error: ${error.message}`)
     }
     
-    console.log('✅ Upserted game statistics successfully')
+    
     return data
   } catch (error) {
     console.error('❌ Error in upsertUserGameStatistics:', error)
@@ -219,7 +218,7 @@ export async function addUserMatchHistory(
   matchData: Omit<UserMatchHistory, 'id' | 'user_id' | 'game_id' | 'created_at'>
 ): Promise<UserMatchHistory> {
   try {
-    console.log('🎮 Adding match history for user:', userId)
+    
     
     const historyData = {
       user_id: userId,
@@ -238,7 +237,7 @@ export async function addUserMatchHistory(
       throw error
     }
     
-    console.log('✅ Added match history')
+    
     return data
   } catch (error) {
     console.error('❌ Error in addUserMatchHistory:', error)
@@ -427,7 +426,7 @@ export async function getUserByClerkId(clerkId: string): Promise<User | null> {
     
     if (error) {
       if (error.code === 'PGRST116') {
-        console.log('🔄 User not found, will need to create one')
+        
         return null
       }
       console.error('❌ Error fetching user:', error)
@@ -547,7 +546,7 @@ export async function getUserTeamsForGame(clerkId: string, game: string) {
   try {
     const user = await getUserByClerkId(clerkId)
     if (!user) {
-      console.log('User not found for clerk ID:', clerkId)
+      
       return []
     }
 
@@ -577,7 +576,7 @@ export async function getUserTeamsForAllGames(clerkId: string, games: string[]) 
     
     const user = await getUserByClerkId(clerkId)
     if (!user) {
-      console.log('User not found for clerk ID:', clerkId)
+      
       return []
     }
     

@@ -415,8 +415,7 @@ export default function ProfilePage() {
       }
 
       const lolStats = gameStats['league-of-legends']
-      console.log('Raw LoL stats:', lolStats)
-      console.log('Using internal user ID:', userData.id)
+      
       
       // Create the most minimal data structure first
       const statsToSave: Record<string, string | number | null> = {
@@ -469,7 +468,7 @@ export default function ProfilePage() {
         statsToSave.last_played = lolStats.lastPlayed
       }
       
-      console.log('Final processed stats to save:', statsToSave)
+      
       
       // Use the API route to save statistics
       const response = await fetch('/api/save-stats', {

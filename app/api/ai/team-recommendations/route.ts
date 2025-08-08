@@ -78,12 +78,11 @@ async function getAITeamRecommendations(
     const user = await getUserByClerkId(clerkId)
     if (!user) throw new Error('User not found')
 
-    console.log(`🔍 AI Recommendations Debug for user ${clerkId}:`)
-    console.log(`📝 Input game format: "${game}"`)
+    
 
     // Normalize game name to handle multiple formats
     const gameVariations = normalizeGameName(game)
-    console.log(`🔄 Checking game variations: ${gameVariations.join(', ')}`)
+    
 
     // Get user's teams for this game (try all variations)
     let userTeams: any[] = []
@@ -91,22 +90,22 @@ async function getAITeamRecommendations(
       const teams = await getUserTeamsForGame(clerkId, gameVariation)
       if (teams.length > 0) {
         userTeams = teams
-        console.log(`✅ Found ${teams.length} user teams with game format: "${gameVariation}"`)
+        
         break
       }
     }
     
-    console.log(`- User has ${userTeams.length} teams for ${game}`)
+    
     
     // Select the team to analyze (either specified or first team)
     if (selectedTeamId) {
       myTeam = userTeams.find(ut => ut.teams.id === selectedTeamId)?.teams
-      console.log(`- Selected team: ${myTeam?.name || 'Not found'}`)
+      
     } else if (userTeams.length > 0) {
       myTeam = userTeams[0]?.teams
-      console.log(`- Using first team: ${myTeam?.name}`)
+      
     } else {
-      console.log('- No user teams found, looking for teams to join')
+      
     }
 
     // Get all available teams for this game with LoL-specific fields
@@ -140,10 +139,10 @@ async function getAITeamRecommendations(
       return []
     }
 
-    console.log(`- Found ${availableTeams?.length || 0} total teams in database`)
+    
 
     if (!availableTeams || availableTeams.length === 0) {
-      console.log('❌ No teams found in database for game:', game)
+      
       return []
     }
 
@@ -154,15 +153,15 @@ async function getAITeamRecommendations(
     
     if (userTeams.length > 0) {
       userTeamIds = userTeams.map(ut => ut.teams.id)
-      console.log(`- User owns ${userTeamIds.length} teams, looking for opponents to play against`)
+      
     }
 
-    console.log(`✅ Proceeding with ${candidateTeams.length} potential opponent teams for AI analysis`)
+    
 
     // Use OpenAI to analyze team matchup compatibility (focus on balanced/competitive matches)
     const recommendations = await analyzeTeamMatchups(myTeam, candidateTeams, userTeamIds, game, limit)
     
-    console.log(`✅ AI returned ${recommendations.length} recommendations`)
+    
     
     return recommendations
 
@@ -171,7 +170,7 @@ async function getAITeamRecommendations(
     
     // Enhanced fallback - try to get ANY teams for this game using all variations
     try {
-      console.log(`🔄 Attempting fallback with game variations: ${gameVariations.join(', ')}`)
+      
       
       let fallbackQuery = supabase
         .from('teams')
@@ -186,11 +185,9 @@ async function getAITeamRecommendations(
       const { data: fallbackTeams } = await fallbackQuery.limit(limit)
       
       if (fallbackTeams && fallbackTeams.length > 0) {
-        console.log(`🔄 Using fallback recommendations with ${fallbackTeams.length} teams`)
         return generateFallbackRecommendations(fallbackTeams, myTeam)
       } else {
-        console.log('❌ No teams available even for fallback')
-        console.log(`🔍 Tried game formats: ${gameVariations.join(', ')}`)
+        
         return []
       }
     } catch (fallbackError) {
@@ -240,14 +237,10 @@ async function analyzeTeamMatchups(
   limit: number
 ): Promise<AITeamRecommendation[]> {
   try {
-    console.log(`🥊 Starting OPPONENT MATCHUP analysis with OpenAI...`)
-    console.log(`- My team: ${myTeam?.name || 'None (finding opponents for general play)'}`)
-    console.log(`- Analyzing ${candidateTeams.length} potential opponents`)
-    console.log(`- User owns ${userTeamIds.length} teams`)
-    console.log(`- Game: ${game}, Limit: ${limit}`)
+    
 
     if (!process.env.OPENAI_API_KEY) {
-      console.log('⚠️  OpenAI API key not found, using fallback opponent recommendations')
+      
       return generateFallbackOpponentRecommendations(candidateTeams, userTeamIds, limit)
     }
 
@@ -324,21 +317,18 @@ Focus on creating COMPETITIVE, BALANCED matches that will be fun and help teams 
 
     const aiResponse = completion.choices[0]?.message?.content
     if (!aiResponse) {
-      console.log('⚠️  No AI response received, using fallback')
       return generateFallbackOpponentRecommendations(candidateTeams, userTeamIds, limit)
     }
-
-    console.log('🤖 OpenAI Response received, parsing...')
+    
 
     // Parse AI response
     const jsonMatch = aiResponse.match(/\[[\s\S]*\]/)
     if (!jsonMatch) {
-      console.log('⚠️  Could not parse AI JSON response, using fallback')
       return generateFallbackOpponentRecommendations(candidateTeams, userTeamIds, limit)
     }
 
     const aiRecommendations = JSON.parse(jsonMatch[0])
-    console.log(`✅ Parsed ${aiRecommendations.length} AI recommendations`)
+    
 
     // Convert AI recommendations to full team data
     const recommendations: AITeamRecommendation[] = []
@@ -373,7 +363,7 @@ Focus on creating COMPETITIVE, BALANCED matches that will be fun and help teams 
       }
     }
 
-    console.log(`✅ Generated ${recommendations.length} opponent recommendations`)
+    
     return recommendations
 
   } catch (error) {
@@ -411,13 +401,10 @@ async function analyzeTeamCompatibility(
   limit: number
 ): Promise<AITeamRecommendation[]> {
   try {
-    console.log(`🤖 Starting AI analysis with OpenAI...`)
-    console.log(`- My team: ${myTeam?.name || 'None (finding teams to join)'}`)
-    console.log(`- Analyzing ${candidateTeams.length} candidate teams`)
-    console.log(`- Game: ${game}, Limit: ${limit}`)
+    
 
     if (!process.env.OPENAI_API_KEY) {
-      console.log('⚠️  OpenAI API key not found, using fallback recommendations')
+      
       return generateFallbackRecommendations(candidateTeams.slice(0, limit), myTeam)
     }
 
@@ -578,31 +565,27 @@ RETURN ONLY VALID JSON ARRAY:
     })
 
     const aiResponse = response.choices[0]?.message?.content
-    console.log(`✅ OpenAI response received (${aiResponse?.length || 0} characters)`)
+    
     
     if (!aiResponse) {
-      console.log('❌ No response content from OpenAI')
       throw new Error('No response from OpenAI')
     }
 
     // Parse AI response
     let aiRecommendations
     try {
-      console.log(`🔍 Parsing AI response...`)
+      
       // Extract JSON from response
       const jsonMatch = aiResponse.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
-        console.log(`📄 Found JSON in response: ${jsonMatch[0].substring(0, 200)}...`)
         aiRecommendations = JSON.parse(jsonMatch[0])
-        console.log(`✅ Parsed ${aiRecommendations.length} AI recommendations`)
+        
       } else {
-        console.log('❌ No JSON array found in AI response')
-        console.log('First 500 chars of response:', aiResponse.substring(0, 500))
+        
         throw new Error('No JSON found in response')
       }
     } catch (parseError) {
       console.error('❌ Error parsing AI response:', parseError)
-      console.log('AI Response:', aiResponse)
       throw parseError
     }
 
@@ -649,14 +632,13 @@ RETURN ONLY VALID JSON ARRAY:
       })
       .sort((a, b) => b.score - a.score)
 
-    console.log(`✅ Converted to ${recommendations.length} final recommendations`)
-    console.log(`🎯 Top recommendation: ${recommendations[0]?.team?.name} (score: ${recommendations[0]?.score})`)
+    
 
     return recommendations
 
   } catch (error) {
     console.error('❌ Error in OpenAI analysis:', error)
-    console.log('🔄 Using fallback recommendations instead')
+    
     // Fallback to simple recommendations
     return generateFallbackRecommendations(candidateTeams.slice(0, limit), myTeam)
   }
@@ -747,7 +729,7 @@ function generateFallbackOpponentRecommendations(
   userTeamIds: string[],
   limit: number
 ): AITeamRecommendation[] {
-  console.log(`🎯 Generating fallback opponent recommendations`)
+  
   
   // Prioritize non-owned teams but include owned teams for variety
   const nonOwnedTeams = teams.filter(team => !userTeamIds.includes(team.id))
@@ -838,27 +820,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Game parameter is required' }, { status: 400 })
     }
 
-    console.log(`🚀 AI Recommendations API called for game: ${game}, user: ${clerkId}`)
-    console.log(`🔍 Server Debug - Starting AI recommendation process...`)
+    
 
     const recommendations = await getAITeamRecommendations(clerkId, game, undefined, limit)
     
-    console.log(`📊 Final result: ${recommendations.length} recommendations`)
+    
     
     // Enhanced server logging for debugging
     if (recommendations.length === 0) {
-      console.log(`❌ SERVER DEBUG: No recommendations returned for game "${game}"`)
-      console.log(`❌ Possible issues:`)
-      console.log(`   1. No teams found in database with game format variations`)
-      console.log(`   2. All teams are owned by current user`)
-      console.log(`   3. All teams are full (current_members >= max_members)`)
-      console.log(`   4. OpenAI API error or fallback failed`)
-      console.log(`❌ Check the detailed logs above for specific failure point`)
+      
     } else {
-      console.log(`✅ SERVER SUCCESS: Returning ${recommendations.length} recommendations`)
-      recommendations.forEach((rec, i) => {
-        console.log(`   ${i+1}. ${rec.team.name} (${rec.score}% match, ${rec.team.region})`)
-      })
+      
     }
 
     return NextResponse.json({ 

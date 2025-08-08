@@ -107,7 +107,7 @@ export default function DashboardPage() {
               })
             }
           } catch (statsError) {
-            console.log('No LoL stats found:', statsError)
+            
           }
         }
         

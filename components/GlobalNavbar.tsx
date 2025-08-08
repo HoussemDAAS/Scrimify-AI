@@ -83,10 +83,10 @@ export default function GlobalNavbar({ userProfile, gameStats }: GlobalNavbarPro
                 </Link>
                 
                 {/* Manage Games Button - Only on Dashboard */}
-                <Link href="/game-selection" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors ml-6">
+                {/* <Link href="/game-selection" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors ml-6">
                   <Gamepad2 className="w-4 h-4" />
                   <span className="hidden lg:block font-bold text-sm md:text-base">MANAGE GAMES</span>
-                </Link>
+                </Link> */}
               </>
             )}
           </div>

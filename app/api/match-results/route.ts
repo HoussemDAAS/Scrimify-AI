@@ -299,7 +299,7 @@ async function updateTeamStatistics(matchResult: any) {
       }
     }
 
-    console.log('Team statistics updated successfully')
+    
   } catch (error) {
     console.error('Error updating team statistics:', error)
   }
